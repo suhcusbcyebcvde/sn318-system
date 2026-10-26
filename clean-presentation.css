@@ -1,0 +1,34 @@
+/* Remove auxiliary commentary while keeping form fields and validation intact. */
+#sim-product-meta,
+.calc-generated-note,
+.calc-section-copy > p,
+.calc-result-note,
+.calc-limit-source,
+.calc-range-head > span,
+.calc-subsection-head > span,
+.calc-shared-title > span,
+.calc-metric > small,
+.calc-price-source,
+.pd,
+.annotation-field-help,
+.su-time-hint,
+.su-field-hint,
+.su-product-detail-hint,
+.dict-nav-hint,
+.destination-scope-help,
+.cost-zone-sub,
+.modal-tip,
+.zone-price-import,
+.express-detail-meta,
+.om-prototype-note,
+.om-flow-note,
+.om-fee-explain,
+.om-allocation-note,
+.ai-evidence,
+.ai-field-evidence,
+.ai-review-head > div > p,
+.ai-debug-head > p {
+  display: none !important;
+}
+
+.calc-dynamic-grid { margin-top: 0; }

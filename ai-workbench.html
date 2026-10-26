@@ -1,0 +1,3582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SN318系统 · AI 工作台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      line-height: 22px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .is-collapsed { display: none !important; }
+    .collapsed-0 { width: 0 !important; border-width: 0 !important; }
+    body.resizing { user-select: none; cursor: col-resize; }
+
+    /* 输入框禁用（待确认状态）：浅灰背景、光标不可见、不可编辑 */
+    #chatInput:disabled {
+      background-color: #F5F6F8;
+      color: #94A3B8;
+      cursor: not-allowed;
+      caret-color: transparent;
+    }
+
+    /* 嵌入主系统时仅保留工作台本体，复用主系统现有导航与用户信息。 */
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body > header,
+    body > aside.fixed { display: none !important; }
+    #mainArea {
+      position: fixed !important;
+      inset: 0 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+    #chatSection > .shrink-0 > .w-full > .flex:first-child {
+      flex-wrap: wrap;
+      max-height: 68px;
+      overflow-y: auto;
+    }
+    #chatSection > .shrink-0 > .w-full > .flex:first-child > button {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body class="text-[#0F172A] bg-[#F8F9FB]">
+
+  <!-- ============ 顶部导航栏 ============ -->
+  <header class="fixed top-0 left-0 right-0 h-14 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-5 z-50">
+    <!-- 左侧：系统图标 + 系统名 -->
+    <div class="flex items-center">
+      <div class="w-6 h-6 rounded-[7px] bg-[#2563EB] flex items-center justify-center shrink-0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+          <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/>
+        </svg>
+      </div>
+      <span class="ml-2 text-base font-semibold text-[#0F172A]">SN318系统</span>
+    </div>
+
+    <!-- 右侧：用户头像 + 姓名 -->
+    <div class="flex items-center">
+      <div class="w-7 h-7 rounded-full bg-[#E2E8F0] flex items-center justify-center text-xs font-medium text-[#475569] shrink-0">王</div>
+      <span class="ml-2 text-sm text-[#0F172A]">王小明</span>
+    </div>
+  </header>
+
+  <!-- ============ 左侧菜单栏（贴边固定，无外边距） ============ -->
+  <aside class="fixed top-14 left-0 bottom-0 w-[220px] bg-white border-r border-[#E5E7EB] overflow-y-auto z-40">
+    <nav class="p-3">
+      <a class="h-11 flex items-center pl-3 rounded-lg bg-[#EFF4FF] text-[#2563EB] font-medium cursor-pointer select-none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="shrink-0" aria-hidden="true">
+          <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/>
+        </svg>
+        <span class="ml-3 text-sm">AI 工作台</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- ============ 中间区域：三栏（整体带外边距，与页面四周留白） ============ -->
+  <main id="mainArea" class="fixed top-[68px] left-[228px] right-2.5 bottom-2.5 flex overflow-hidden bg-white border border-[#E5E7EB] rounded-lg shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
+
+    <!-- 第一栏：任务列表栏（可收缩） -->
+    <aside id="taskPanel" class="shrink-0 bg-white border-r border-[#E5E7EB] flex flex-col overflow-hidden transition-[width] duration-200 ease-out" style="width:240px">
+      <div class="flex flex-col flex-1 min-h-0">
+        <!-- 标题行 -->
+        <div class="flex items-center justify-between h-14 px-4 shrink-0">
+          <div class="flex items-center min-w-0">
+            <div class="w-6 h-6 rounded-[7px] bg-[#2563EB] flex items-center justify-center shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="white" aria-hidden="true"><path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/></svg>
+            </div>
+            <span class="ml-2 text-[15px] font-semibold text-[#0F172A] truncate">运小星</span>
+          </div>
+          <button id="taskPanelCollapse" class="w-6 h-6 flex items-center justify-center rounded-md text-[#64748B] hover:text-[#0F172A] hover:bg-[#F5F6F8] cursor-pointer shrink-0" title="收起任务列表">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
+          </button>
+        </div>
+
+        <!-- 新建任务按钮 -->
+        <div class="px-5 pb-3 shrink-0">
+          <button id="newTaskBtn" class="w-full h-9 rounded-lg bg-[#2563EB] text-white text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-[#1D4ED8] cursor-pointer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            <span>新建任务</span>
+          </button>
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="px-5 pb-3 shrink-0">
+          <div class="relative">
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="taskSearch" type="text" class="w-full h-8 rounded-md bg-[#F5F6F8] pl-8 pr-3 text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none" placeholder="搜索任务" />
+          </div>
+        </div>
+
+        <!-- 任务列表（可搜索、可新建；列表项由脚本按数据渲染） -->
+        <div id="taskList" class="flex-1 min-h-0 overflow-y-auto px-4 pb-2">
+          <div id="taskEmpty" class="is-collapsed px-3 py-6 text-center text-xs leading-5 text-[#94A3B8]">未找到匹配的任务</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 第二栏：对话区 -->
+    <section id="chatSection" class="relative flex-1 min-w-0 bg-white flex flex-col overflow-hidden">
+      <!-- 展开任务列表按钮（任务栏收起时显示） -->
+      <button id="taskExpandBtn" class="is-collapsed absolute left-0 top-4 z-10 w-6 h-6 flex items-center justify-center text-[#94A3B8] hover:text-[#2563EB] cursor-pointer" title="展开任务列表">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/></svg>
+      </button>
+
+      <!-- 展开结果预览按钮（预览面板收起时显示） -->
+      <button id="previewExpandBtn" class="is-collapsed absolute right-0 top-4 z-10 w-6 h-6 flex items-center justify-center text-[#94A3B8] hover:text-[#2563EB] cursor-pointer" title="展开结果预览">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
+      </button>
+
+      <!-- 任务标题栏（高度与左右两栏标题栏保持一致，顶部基线对齐） -->
+      <div class="shrink-0 h-14 flex items-center px-9 border-b border-[#E5E7EB]">
+        <div class="w-full">
+          <h1 id="chatTitle" class="text-[15px] font-semibold text-[#0F172A] truncate">修改价卡信息</h1>
+          <div id="taskTitleHint" class="is-collapsed mt-0.5 text-xs text-[#94A3B8]">刚刚</div>
+        </div>
+      </div>
+
+      <!-- 消息流 -->
+      <div id="messageScroll" class="flex-1 min-h-0 overflow-y-auto px-9 pt-8 pb-8">
+        <!-- 对话内容由脚本产生 / 追加 -->
+        <div id="messages" class="space-y-7">
+        <!-- 初始状态：仅展示 AI 打招呼语，等待用户输入或点击快捷按钮 -->
+        <div class="flex items-start gap-3">
+          <div class="w-7 h-7 rounded-full bg-[#2563EB] flex items-center justify-center shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white" aria-hidden="true"><path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/></svg>
+          </div>
+          <div class="min-w-0 max-w-[70%] rounded-xl border border-[#E5E7EB] px-5 py-3.5 text-sm leading-6 text-[#0F172A]">
+            你好，我是运小星智能服务助手，有什么可以帮您的？
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <!-- 输入区 -->
+      <div class="shrink-0 px-9 pt-6 pb-8">
+        <div class="w-full">
+        <!-- 快捷操作 -->
+        <div class="flex items-center gap-2 mb-2.5">
+          <button id="normalFlowBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg>
+            <span>正常流程</span>
+          </button>
+          <button id="unitNotFoundBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8.5 8.5l5 5"/><path d="M13.5 8.5l-5 5"/></svg>
+            <span>匹配不到服务单元</span>
+          </button>
+          <button id="priceCardNotFoundBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8.5 8.5l5 5"/><path d="M13.5 8.5l-5 5"/></svg>
+            <span>匹配不到价卡</span>
+          </button>
+          <button id="incompleteBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+            <span>内容不完整</span>
+          </button>
+          <button id="priceCardIncompleteBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+            <span>内容不完整</span>
+          </button>
+          <button id="multiUnitBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <span>多服务单元</span>
+          </button>
+          <button id="multiPriceCardBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <span>多价卡</span>
+          </button>
+          <button id="partialFailBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v5"/><path d="M12 17h.01"/><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+            <span>部分失败</span>
+          </button>
+          <button id="priceCardPartialFailBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v5"/><path d="M12 17h.01"/><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+            <span>部分失败</span>
+          </button>
+          <button id="billingNoCardBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+            <span>未提供价卡</span>
+          </button>
+          <button id="billingNoRuleBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8.5 8.5l5 5"/><path d="M13.5 8.5l-5 5"/></svg>
+            <span>匹配不到规则</span>
+          </button>
+          <button id="billingIncompleteBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+            <span>内容不完整</span>
+          </button>
+          <button id="mbMultiBillingBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <span>多价卡多规则</span>
+          </button>
+          <button id="mbPartialFailBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v5"/><path d="M12 17h.01"/><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+            <span>部分失败</span>
+          </button>
+          <button id="fileFlowBtn" class="h-7 px-3 rounded-full border border-[#E5E7EB] bg-white text-xs text-[#475569] flex items-center gap-1.5 hover:border-[#2563EB] hover:text-[#2563EB] hover:bg-[#EFF4FF] transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v5h5"/><path d="M19 8v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5Z"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
+            <span>文件解析建档</span>
+          </button>
+        </div>
+        <!-- 输入框容器 -->
+        <div class="rounded-xl border border-[#E5E7EB] focus-within:border-[#2563EB] transition-colors">
+          <textarea id="chatInput" class="block w-full min-h-[76px] px-4 pt-3.5 pb-1 text-sm leading-6 text-[#0F172A] placeholder-[#94A3B8] resize-none bg-transparent focus:outline-none" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
+          <div class="flex items-center justify-between px-3 pb-2.5">
+            <button class="w-6 h-6 flex items-center justify-center text-[#64748B] hover:text-[#0F172A] cursor-pointer" title="附件">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <button class="w-6 h-6 flex items-center justify-center text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer" title="发送">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+            </button>
+          </div>
+        </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 拖拽热区（第二栏与第三栏之间） -->
+    <div id="resizer" class="peer w-1 shrink-0 cursor-col-resize" title="拖拽调整宽度"></div>
+
+    <!-- 第三栏：数据面板（可拖拽调宽） -->
+    <aside id="previewPanel" class="shrink-0 bg-white border-l border-[#E5E7EB] peer-hover:border-[#2563EB] flex flex-col overflow-hidden transition-[width] duration-200 ease-out" style="width:360px">
+      <div class="flex flex-col flex-1 min-h-0">
+        <!-- 标题栏 -->
+        <div class="flex items-center justify-between h-14 px-4 shrink-0 border-b border-[#E5E7EB]">
+          <span class="text-[15px] font-semibold text-[#0F172A]">数据面板</span>
+          <button id="previewPanelCollapse" class="w-6 h-6 flex items-center justify-center rounded-md text-[#64748B] hover:text-[#0F172A] hover:bg-[#F5F6F8] cursor-pointer" title="收起结果预览">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/></svg>
+          </button>
+        </div>
+
+        <!-- 空状态（首次进入） -->
+        <div id="previewEmpty" class="flex-1 min-h-0 flex flex-col items-center justify-center px-10">
+          <div class="w-12 h-12 rounded-xl border border-[#E5E7EB] flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
+          </div>
+          <div class="mt-4 text-sm font-medium text-[#0F172A]">数据面板</div>
+          <div class="mt-1 text-xs text-[#94A3B8] text-center leading-5">解析结果、变更内容将在此展示，可调整并确认</div>
+        </div>
+
+        <!-- 待确认：服务单元表格 + 对比数据 + 底部按钮 -->
+        <div id="previewPending" class="is-collapsed flex-1 min-h-0 flex flex-col">
+          <div class="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-3">
+            <!-- 表头与数据行由脚本按当前场景（服务单元 / 价卡）渲染 -->
+            <div class="overflow-x-auto rounded-lg border border-[#E5E7EB]">
+              <table class="w-full min-w-[460px] table-fixed border-collapse text-left text-xs">
+                <thead id="singleTableHead" class="bg-[#F5F6F8] text-[#475569]">
+                  <tr>
+                    <th class="px-2 py-2 font-medium">服务单元名称</th>
+                    <th class="px-2 py-2 font-medium">服务商名称</th>
+                    <th class="px-2 py-2 font-medium">履约抛比</th>
+                    <th class="px-2 py-2 font-medium">每日负载容量</th>
+                    <th class="px-2 py-2 font-medium text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="singleTableBody" class="text-[#0F172A]">
+                  <tr class="border-t border-[#E5E7EB]">
+                    <td class="px-2 py-2.5 truncate" title="H-59 HKDHL">H-59 HKDHL</td>
+                    <td class="px-2 py-2.5 truncate" title="H-59 HKDHL">H-59 HKDHL</td>
+                    <td data-field-value="履约抛比" class="px-2 py-2.5 font-medium text-[#2563EB]">6000</td>
+                    <td data-field-value="每日负载容量" class="px-2 py-2.5 font-medium text-[#2563EB]">2000</td>
+                    <td class="px-2 py-2.5 text-right">
+                      <button data-field-edit="全部" class="text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer">编辑</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 对比数据 -->
+            <div class="mt-4">
+              <div class="text-xs font-medium text-[#475569]">本次修改对比</div>
+              <div class="mt-2 overflow-hidden rounded-lg border border-[#E5E7EB]">
+                <table class="w-full table-fixed border-collapse text-left text-[11px]">
+                  <thead class="bg-[#F5F6F8] text-[#475569]">
+                    <tr>
+                      <th id="compareHeadName" class="px-1.5 py-2 font-medium">服务单元名称</th>
+                      <th id="compareHeadBound" class="px-1.5 py-2 font-medium">服务商名称</th>
+                      <th class="px-1.5 py-2 font-medium">字段</th>
+                      <th class="px-1.5 py-2 font-medium">原值</th>
+                      <th class="px-1.5 py-2 font-medium">新值</th>
+                    </tr>
+                  </thead>
+                  <tbody id="compareRows" class="text-[#0F172A]">
+                    <tr data-compare-row class="border-t border-[#E5E7EB]">
+                      <td class="px-1.5 py-2.5 truncate" title="H-59 HKDHL">H-59 HKDHL</td>
+                      <td class="px-1.5 py-2.5 truncate" title="H-59 HKDHL">H-59 HKDHL</td>
+                      <td class="px-1.5 py-2.5">履约抛比</td>
+                      <td class="px-1.5 py-2.5 text-[#94A3B8]">5000</td>
+                      <td class="px-1.5 py-2.5 font-semibold text-[#16A34A]">6000</td>
+                    </tr>
+                    <tr data-compare-row class="border-t border-[#E5E7EB]">
+                      <td class="px-1.5 py-2.5 truncate"></td>
+                      <td class="px-1.5 py-2.5 truncate"></td>
+                      <td class="px-1.5 py-2.5">每日负载容量</td>
+                      <td class="px-1.5 py-2.5 text-[#94A3B8]">1500</td>
+                      <td class="px-1.5 py-2.5 font-semibold text-[#16A34A]">2000</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div id="compareTip" class="is-collapsed mt-2 text-[11px] leading-4 text-[#94A3B8]"></div>
+            </div>
+          </div>
+
+          <!-- 底部按钮（固定右下角） -->
+          <div class="shrink-0 flex items-center justify-end gap-2 border-t border-[#E5E7EB] px-4 py-3">
+            <button id="panelCancelBtn" class="h-8 px-3.5 rounded-lg border border-[#D0D5DD] bg-white text-xs text-[#475569] hover:bg-[#F5F6F8] cursor-pointer">取消</button>
+            <button id="panelConfirmBtn" class="h-8 px-3.5 rounded-lg bg-[#2563EB] text-white text-xs font-medium hover:bg-[#1D4ED8] cursor-pointer">确认</button>
+          </div>
+        </div>
+
+        <!-- 待确认（多服务单元）：全选 + 服务单元列表 + 对比数据 + 底部按钮 -->
+        <div id="previewMultiPending" class="is-collapsed flex-1 min-h-0 flex flex-col">
+          <div class="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-3">
+            <!-- 服务单元列表 -->
+            <div class="overflow-x-auto rounded-lg border border-[#E5E7EB]">
+              <table class="w-full min-w-[640px] table-fixed border-collapse text-left text-xs">
+                <thead class="bg-[#F5F6F8] text-[#475569]">
+                  <tr>
+                    <th id="multiHeadSelect" class="w-9 px-2 py-2 font-medium"><input type="checkbox" id="selectAllUnits" class="w-3.5 h-3.5 align-middle accent-[#2563EB] cursor-pointer" title="全选" /></th>
+                    <th id="multiHeadName" class="px-2 py-2 font-medium">服务单元名称</th>
+                    <th id="multiHeadBound" class="px-2 py-2 font-medium">服务商名称</th>
+                    <th id="multiHeadField1" class="px-2 py-2 font-medium">接单时间</th>
+                    <th id="multiHeadField2" class="px-2 py-2 font-medium">截单时间</th>
+                    <th class="px-2 py-2 font-medium text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="multiListBody" class="text-[#0F172A]">
+                  <tr class="border-t border-[#E5E7EB]">
+                    <td class="px-2 py-2.5"><input type="checkbox" data-unit-select="DHL-上海仓" class="w-3.5 h-3.5 align-middle accent-[#2563EB] cursor-pointer" /></td>
+                    <td class="px-2 py-2.5 truncate" title="DHL-上海仓">DHL-上海仓</td>
+                    <td class="px-2 py-2.5 truncate" title="DHL">DHL</td>
+                    <td data-unit-value="DHL-上海仓|接单时间" class="px-2 py-2.5 font-medium text-[#2563EB]" title="2026-10-09 09:00">2026-10-09 09:00</td>
+                    <td data-unit-value="DHL-上海仓|截单时间" class="px-2 py-2.5 font-medium text-[#2563EB]" title="2026-10-09 18:00">2026-10-09 18:00</td>
+                    <td class="px-2 py-2.5 text-right"><button data-unit-edit="DHL-上海仓" class="text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer">编辑</button></td>
+                  </tr>
+                  <tr class="border-t border-[#E5E7EB]">
+                    <td class="px-2 py-2.5"><input type="checkbox" data-unit-select="DHL-深圳仓" class="w-3.5 h-3.5 align-middle accent-[#2563EB] cursor-pointer" /></td>
+                    <td class="px-2 py-2.5 truncate" title="DHL-深圳仓">DHL-深圳仓</td>
+                    <td class="px-2 py-2.5 truncate" title="DHL">DHL</td>
+                    <td data-unit-value="DHL-深圳仓|接单时间" class="px-2 py-2.5 font-medium text-[#2563EB]" title="2026-10-09 09:00">2026-10-09 09:00</td>
+                    <td data-unit-value="DHL-深圳仓|截单时间" class="px-2 py-2.5 font-medium text-[#2563EB]" title="2026-10-09 18:00">2026-10-09 18:00</td>
+                    <td class="px-2 py-2.5 text-right"><button data-unit-edit="DHL-深圳仓" class="text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer">编辑</button></td>
+                  </tr>
+                  <tr class="border-t border-[#E5E7EB]">
+                    <td class="px-2 py-2.5"><input type="checkbox" data-unit-select="DHL-香港仓" class="w-3.5 h-3.5 align-middle accent-[#2563EB] cursor-pointer" /></td>
+                    <td class="px-2 py-2.5 truncate" title="DHL-香港仓">DHL-香港仓</td>
+                    <td class="px-2 py-2.5 truncate" title="DHL">DHL</td>
+                    <td data-unit-value="DHL-香港仓|接单时间" class="px-2 py-2.5 font-medium text-[#2563EB]" title="2026-10-09 09:00">2026-10-09 09:00</td>
+                    <td data-unit-value="DHL-香港仓|截单时间" class="px-2 py-2.5 font-medium text-[#2563EB]" title="2026-10-09 18:00">2026-10-09 18:00</td>
+                    <td class="px-2 py-2.5 text-right"><button data-unit-edit="DHL-香港仓" class="text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer">编辑</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 对比数据（随勾选实时更新） -->
+            <div class="mt-4">
+              <div class="text-xs font-medium text-[#475569]">本次修改对比</div>
+              <div class="mt-2 overflow-x-auto rounded-lg border border-[#E5E7EB]">
+                <table class="w-full min-w-[420px] table-fixed border-collapse text-left text-[11px]">
+                  <thead class="bg-[#F5F6F8] text-[#475569]">
+                    <tr>
+                      <th id="multiCompareHeadName" class="px-1.5 py-2 font-medium">服务单元名称</th>
+                      <th id="multiCompareHeadBound" class="px-1.5 py-2 font-medium">服务商名称</th>
+                      <th class="px-1.5 py-2 font-medium">字段</th>
+                      <th class="px-1.5 py-2 font-medium">原值</th>
+                      <th class="px-1.5 py-2 font-medium">新值</th>
+                    </tr>
+                  </thead>
+                  <tbody id="multiCompareRows" class="text-[#0F172A]"></tbody>
+                </table>
+              </div>
+              <div id="multiCompareTip" class="is-collapsed mt-2 text-[11px] leading-4 text-[#94A3B8]"></div>
+            </div>
+          </div>
+
+          <!-- 底部按钮（固定右下角） -->
+          <div class="shrink-0 flex items-center justify-end gap-2 border-t border-[#E5E7EB] px-4 py-3">
+            <button id="multiCancelBtn" class="h-8 px-3.5 rounded-lg border border-[#D0D5DD] bg-white text-xs text-[#475569] hover:bg-[#F5F6F8] cursor-pointer">取消</button>
+            <button id="multiConfirmBtn" class="h-8 px-3.5 rounded-lg bg-[#2563EB] text-white text-xs font-medium hover:bg-[#1D4ED8] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">确认</button>
+          </div>
+        </div>
+
+        <!-- 执行结果（部分成功、部分失败：成功卡片 + 失败卡片） -->
+        <div id="previewPartialResult" class="is-collapsed flex-1 min-h-0 flex flex-col">
+          <div class="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4">
+            <div class="text-xs font-medium text-[#475569]">执行结果</div>
+            <div id="partialCards" class="mt-2 space-y-5"></div>
+          </div>
+          <!-- 底部按钮（固定右下角）：主按钮为「重试」，次按钮为「取消」 -->
+          <div id="partialActions" class="shrink-0 flex items-center justify-end gap-2 border-t border-[#E5E7EB] px-4 py-3">
+            <button id="partialCancelBtn" class="h-8 px-3.5 rounded-lg border border-[#D0D5DD] bg-white text-xs text-[#475569] hover:bg-[#F5F6F8] cursor-pointer">取消</button>
+            <button id="partialRetryBtn" class="h-8 px-3.5 rounded-lg bg-[#2563EB] text-white text-xs font-medium hover:bg-[#1D4ED8] cursor-pointer">重试</button>
+          </div>
+        </div>
+
+        <!-- 结果卡片（多服务单元：确认后每个服务单元一张独立卡片，卡片之间留间距） -->
+        <div id="previewMultiResult" class="is-collapsed flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4">
+          <div id="multiResultCards" class="space-y-5"></div>
+        </div>
+
+        <!-- 结果卡片（确认后展示）：成功状态条 + 信息栏 + 结果表格，三部分连在一起 -->
+        <div id="previewResult" class="is-collapsed flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4">
+          <div id="cardChanges"></div>
+        </div>
+
+        <!-- 待确认（修改价卡计费）：信息栏 + 计费规则表 + 对比表 + 底部按钮 -->
+        <div id="previewBillingPending" class="is-collapsed flex-1 min-h-0 flex flex-col">
+          <div class="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-3">
+            <!-- 主表格：信息栏与表格连在一起（同一表格内的组级信息行） -->
+            <div class="overflow-x-auto rounded-lg border border-[#E5E7EB]">
+              <table class="w-full min-w-[880px] border-collapse text-left text-xs">
+                <thead>
+                  <!-- 组级信息栏：服务商 | 服务单元 | 成本价卡 -->
+                  <tr class="bg-[#F5F6F8] border-b border-[#E5E7EB]">
+                    <th colspan="7" class="px-3 py-2.5 text-left font-semibold text-[#0F172A]">
+                      <span>德邦</span>
+                      <span class="mx-1.5 text-[#94A3B8]">|</span>
+                      <span>德邦上门取件</span>
+                      <span class="mx-1.5 text-[#94A3B8]">|</span>
+                      <span>德邦取件价卡</span>
+                    </th>
+                  </tr>
+                  <tr class="bg-[#F5F6F8] text-[#475569]">
+                    <th class="w-9 px-2 py-2 font-medium"><input type="checkbox" id="billingGroupCheck" class="w-3.5 h-3.5 align-middle accent-[#2563EB] cursor-pointer" title="全选" checked /></th>
+                    <th class="px-2 py-2 font-medium">收费项目</th>
+                    <th class="px-2 py-2 font-medium">起点分区</th>
+                    <th class="px-2 py-2 font-medium">终点分区</th>
+                    <th class="px-2 py-2 font-medium">币别</th>
+                    <th class="px-2 py-2 font-medium">计费规则</th>
+                    <th class="px-2 py-2 font-medium text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="billingRows" class="text-[#0F172A]"></tbody>
+              </table>
+            </div>
+
+            <!-- 对比表格（信息栏与表格连在一起） -->
+            <div class="mt-4">
+              <div class="text-xs font-medium text-[#475569]">本次修改对比</div>
+              <div class="mt-2 overflow-x-auto rounded-lg border border-[#E5E7EB]">
+                <table class="w-full min-w-[760px] border-collapse text-left text-[11px]">
+                  <thead>
+                    <tr class="bg-[#F5F6F8] border-b border-[#E5E7EB]">
+                      <th colspan="6" class="px-3 py-2 text-left font-semibold text-[#0F172A]">
+                        <span>德邦</span><span class="mx-1.5 text-[#94A3B8]">|</span><span>德邦上门取件</span><span class="mx-1.5 text-[#94A3B8]">|</span><span>德邦取件价卡</span>
+                      </th>
+                    </tr>
+                    <tr class="bg-[#F5F6F8] text-[#475569]">
+                      <th class="px-1.5 py-2 font-medium">收费项目</th>
+                      <th class="px-1.5 py-2 font-medium">起点分区</th>
+                      <th class="px-1.5 py-2 font-medium">终点分区</th>
+                      <th class="px-1.5 py-2 font-medium">币别</th>
+                      <th class="px-1.5 py-2 font-medium">原值</th>
+                      <th class="px-1.5 py-2 font-medium">新值</th>
+                    </tr>
+                  </thead>
+                  <tbody id="billingCompareRows" class="text-[#0F172A]"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部按钮（固定右下角） -->
+          <div class="shrink-0 flex items-center justify-end gap-2 border-t border-[#E5E7EB] px-4 py-3">
+            <button id="billingCancelBtn" class="h-8 px-3.5 rounded-lg border border-[#D0D5DD] bg-white text-xs text-[#475569] hover:bg-[#F5F6F8] cursor-pointer">取消</button>
+            <button id="billingConfirmBtn" class="h-8 px-3.5 rounded-lg bg-[#2563EB] text-white text-xs font-medium hover:bg-[#1D4ED8] cursor-pointer">确认</button>
+          </div>
+        </div>
+
+        <!-- 结果视图（修改价卡计费）：成功状态条 + 信息栏 + 结果表格，三部分在同一表格内连为一体 -->
+        <div id="previewBillingResult" class="is-collapsed flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4">
+          <div class="overflow-x-auto rounded-lg border border-[#E5E7EB]">
+            <table class="w-full min-w-[760px] border-collapse text-left text-[11px]">
+              <thead>
+                <!-- 第一部分：成功状态条（绿色底，占满整行，左侧对勾图标 + 修改成功） -->
+                <tr class="bg-[#ECFDF3] border-b border-[#E5E7EB]">
+                  <th colspan="6" class="px-3 py-2.5 text-left font-normal">
+                    <div class="flex items-center gap-2">
+                      <span class="w-5 h-5 rounded-full bg-[#16A34A] flex items-center justify-center shrink-0">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>
+                      </span>
+                      <span class="text-sm font-semibold text-[#0F172A]">修改成功</span>
+                    </div>
+                  </th>
+                </tr>
+                <!-- 第二部分：组级信息栏（左侧 服务商 | 服务单元 | 成本价卡，右侧 版本号 + 变更时间） -->
+                <tr class="bg-[#F5F6F8] border-b border-[#E5E7EB]">
+                  <th colspan="6" class="px-3 py-2 text-left">
+                    <div class="flex items-center justify-between gap-4">
+                      <div class="font-semibold text-[#0F172A]">
+                        <span>德邦</span><span class="mx-1.5 text-[#94A3B8]">|</span><span>德邦上门取件</span><span class="mx-1.5 text-[#94A3B8]">|</span><span>德邦取件价卡</span>
+                      </div>
+                      <div class="font-normal text-[#475569] whitespace-nowrap">
+                        <span class="mr-4">新版本号：<span class="font-medium text-[#2563EB]">V2</span></span>
+                        <span>变更时间：<span class="text-[#0F172A]">2026-10-13 15:30</span></span>
+                      </div>
+                    </div>
+                  </th>
+                </tr>
+                <!-- 第三部分：结果表格列头 -->
+                <tr class="bg-[#F5F6F8] text-[#475569]">
+                  <th class="px-1.5 py-2 font-medium">收费项目</th>
+                  <th class="px-1.5 py-2 font-medium">起点分区</th>
+                  <th class="px-1.5 py-2 font-medium">终点分区</th>
+                  <th class="px-1.5 py-2 font-medium">币别</th>
+                  <th class="px-1.5 py-2 font-medium">原值</th>
+                  <th class="px-1.5 py-2 font-medium">新值</th>
+                </tr>
+              </thead>
+              <tbody id="billingResultRows" class="text-[#0F172A]"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 待确认（多价卡多计费）：按价卡分组的规则表 + 分组对比表 + 底部按钮 -->
+        <div id="previewMultiBillingPending" class="is-collapsed flex-1 min-h-0 flex flex-col">
+          <div class="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-3">
+            <!-- 匹配到的计费规则（按价卡分组，每组信息栏与表格连在一起） -->
+            <div id="mbGroups" class="space-y-4"></div>
+
+            <!-- 本次修改对比（按价卡分组，只展示已勾选规则） -->
+            <div class="mt-5">
+              <div class="text-xs font-medium text-[#475569]">本次修改对比</div>
+              <div id="mbCompareGroups" class="mt-2 space-y-4"></div>
+            </div>
+          </div>
+
+          <!-- 底部按钮（固定右下角） -->
+          <div class="shrink-0 flex items-center justify-end gap-2 border-t border-[#E5E7EB] px-4 py-3">
+            <button id="mbCancelBtn" class="h-8 px-3.5 rounded-lg border border-[#D0D5DD] bg-white text-xs text-[#475569] hover:bg-[#F5F6F8] cursor-pointer">取消</button>
+            <button id="mbConfirmBtn" class="h-8 px-3.5 rounded-lg bg-[#2563EB] text-white text-xs font-medium hover:bg-[#1D4ED8] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">确认</button>
+          </div>
+        </div>
+
+        <!-- 结果视图（多价卡多计费）：按价卡分组，每组为 成功状态条 + 信息栏 + 结果表格 -->
+        <div id="previewMultiBillingResult" class="is-collapsed flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4">
+          <div id="mbResultGroups" class="space-y-5"></div>
+        </div>
+
+        <!-- 执行结果（多价卡多计费 · 部分成功、部分失败）：成功卡片 + 失败卡片 + 重试 -->
+        <div id="previewMultiBillingPartial" class="is-collapsed flex-1 min-h-0 flex flex-col">
+          <div class="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4">
+            <div id="mbPartialGroups" class="space-y-5"></div>
+          </div>
+          <!-- 底部按钮（固定右下角）：主按钮为「重试」，次按钮为「取消」 -->
+          <div id="mbPartialActions" class="shrink-0 flex items-center justify-end gap-2 border-t border-[#E5E7EB] px-4 py-3">
+            <button id="mbPartialCancelBtn" class="h-8 px-3.5 rounded-lg border border-[#D0D5DD] bg-white text-xs text-[#475569] hover:bg-[#F5F6F8] cursor-pointer">取消</button>
+            <button id="mbPartialRetryBtn" class="h-8 px-3.5 rounded-lg bg-[#2563EB] text-white text-xs font-medium hover:bg-[#1D4ED8] cursor-pointer">重试</button>
+          </div>
+        </div>
+
+        <!-- 文件解析建档：服务单元列表（选中行高亮）+ 选中行的解析详情 -->
+        <div id="previewFilePending" class="is-collapsed flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4">
+          <div class="text-xs font-medium text-[#475569]">服务单元列表</div>
+          <div class="mt-2 overflow-x-auto rounded-lg border border-[#E5E7EB]">
+            <table class="w-full min-w-[760px] border-collapse text-left text-xs">
+              <thead class="bg-[#F5F6F8] text-[#475569]">
+                <tr>
+                  <th class="px-3 py-2 font-medium">服务单元名称</th>
+                  <th class="px-3 py-2 font-medium">解析状态</th>
+                  <th class="px-3 py-2 font-medium">匹配结果</th>
+                  <th class="px-3 py-2 font-medium">待确认条数</th>
+                  <th class="px-3 py-2 font-medium">处理状态</th>
+                  <th class="px-3 py-2 font-medium text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="fileRows" class="text-[#0F172A]"></tbody>
+            </table>
+          </div>
+          <!-- 选中行详情：服务单元 / 成本价卡（横向表） + 价卡计费 -->
+          <div id="fileDetail" class="mt-5 space-y-4"></div>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- 编辑计费规则弹框（展示该条计费规则的所有可编辑字段） -->
+  <div id="billingEditModal" class="is-collapsed fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
+    <div class="w-[440px] rounded-xl bg-white p-5 shadow-xl">
+      <div class="text-sm font-semibold text-[#0F172A]">编辑计费规则</div>
+      <div class="mt-1 text-xs text-[#94A3B8]">德邦上门取件运费 · 上海 → 上海</div>
+      <div class="mt-4 space-y-3">
+        <label class="block">
+          <span class="text-xs text-[#94A3B8]">计费规则</span>
+          <input id="billingEditRule" type="text" class="mt-1 block w-full h-9 rounded-md border border-[#D0D5DD] px-3 text-sm text-[#0F172A] focus:outline-none focus:border-[#2563EB]" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-[#94A3B8]">条件表达式</span>
+          <input id="billingEditCondition" type="text" class="mt-1 block w-full h-9 rounded-md border border-[#D0D5DD] px-3 text-sm text-[#0F172A] focus:outline-none focus:border-[#2563EB]" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-[#94A3B8]">是否计算燃油</span>
+          <input id="billingEditFuel" type="text" class="mt-1 block w-full h-9 rounded-md border border-[#D0D5DD] px-3 text-sm text-[#0F172A] focus:outline-none focus:border-[#2563EB]" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-[#94A3B8]">备注</span>
+          <input id="billingEditNote" type="text" class="mt-1 block w-full h-9 rounded-md border border-[#D0D5DD] px-3 text-sm text-[#0F172A] focus:outline-none focus:border-[#2563EB]" />
+        </label>
+      </div>
+      <div class="mt-5 flex items-center justify-end gap-2">
+        <button id="billingEditCancelBtn" class="h-8 px-3.5 rounded-lg border border-[#D0D5DD] bg-white text-xs text-[#475569] hover:bg-[#F5F6F8] cursor-pointer">取消</button>
+        <button id="billingEditSaveBtn" class="h-8 px-3.5 rounded-lg bg-[#2563EB] text-white text-xs font-medium hover:bg-[#1D4ED8] cursor-pointer">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑计费规则弹框（正常流程：以表格逐段编辑该行的底层规则，单元格内直接编辑） -->
+  <div id="billingRulesModal" class="is-collapsed fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
+    <div class="w-[720px] max-h-[80vh] overflow-y-auto rounded-xl bg-white p-5 shadow-xl">
+      <div class="text-sm font-semibold text-[#0F172A]">编辑计费规则</div>
+      <div class="mt-1 text-xs text-[#94A3B8]">德邦上门取件运费 · 上海 → 上海</div>
+      <div class="mt-4 overflow-x-auto rounded-lg border border-[#E5E7EB]">
+        <table class="w-full min-w-[620px] border-collapse text-left text-xs">
+          <thead class="bg-[#F5F6F8] text-[#475569]">
+            <tr>
+              <th class="px-3 py-2 font-medium">计费方式</th>
+              <th class="px-3 py-2 font-medium">计费要素</th>
+              <th class="px-3 py-2 font-medium">区间</th>
+              <th class="px-3 py-2 font-medium">价格</th>
+            </tr>
+          </thead>
+          <tbody id="billingRuleRows" class="text-[#0F172A]"></tbody>
+        </table>
+      </div>
+      <div class="mt-5 flex items-center justify-end gap-2">
+        <button id="billingRulesCancelBtn" class="h-8 px-3.5 rounded-lg border border-[#D0D5DD] bg-white text-xs text-[#475569] hover:bg-[#F5F6F8] cursor-pointer">取消</button>
+        <button id="billingRulesSaveBtn" class="h-8 px-3.5 rounded-lg bg-[#2563EB] text-white text-xs font-medium hover:bg-[#1D4ED8] cursor-pointer">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const taskPanel = document.getElementById('taskPanel');
+      const taskCollapse = document.getElementById('taskPanelCollapse');
+      const taskExpandBtn = document.getElementById('taskExpandBtn');
+
+      const previewPanel = document.getElementById('previewPanel');
+      const previewCollapse = document.getElementById('previewPanelCollapse');
+      const previewExpandBtn = document.getElementById('previewExpandBtn');
+      const resizer = document.getElementById('resizer');
+      const mainArea = document.getElementById('mainArea');
+
+      const taskList = document.getElementById('taskList');
+      const taskEmpty = document.getElementById('taskEmpty');
+      const newTaskBtn = document.getElementById('newTaskBtn');
+      const taskSearch = document.getElementById('taskSearch');
+      const messageScroll = document.getElementById('messageScroll');
+      const messages = document.getElementById('messages');
+      const chatTitle = document.getElementById('chatTitle');
+      const taskTitleHint = document.getElementById('taskTitleHint');
+      const previewEmpty = document.getElementById('previewEmpty');
+      const previewPending = document.getElementById('previewPending');
+      const previewResult = document.getElementById('previewResult');
+      const previewMultiPending = document.getElementById('previewMultiPending');
+      const previewMultiResult = document.getElementById('previewMultiResult');
+      const previewPartialResult = document.getElementById('previewPartialResult');
+      const partialCards = document.getElementById('partialCards');
+      const partialRetryBtn = document.getElementById('partialRetryBtn');
+      const partialCancelBtn = document.getElementById('partialCancelBtn');
+      const partialActions = document.getElementById('partialActions');
+      const previewBillingPending = document.getElementById('previewBillingPending');
+      const previewBillingResult = document.getElementById('previewBillingResult');
+      const billingRows = document.getElementById('billingRows');
+      const billingCompareRows = document.getElementById('billingCompareRows');
+      const billingResultRows = document.getElementById('billingResultRows');
+      const billingGroupCheck = document.getElementById('billingGroupCheck');
+      const billingConfirmBtn = document.getElementById('billingConfirmBtn');
+      const billingCancelBtn = document.getElementById('billingCancelBtn');
+      const billingEditModal = document.getElementById('billingEditModal');
+      const billingEditRule = document.getElementById('billingEditRule');
+      const billingEditCondition = document.getElementById('billingEditCondition');
+      const billingEditFuel = document.getElementById('billingEditFuel');
+      const billingEditNote = document.getElementById('billingEditNote');
+      const billingEditSaveBtn = document.getElementById('billingEditSaveBtn');
+      const billingEditCancelBtn = document.getElementById('billingEditCancelBtn');
+      const billingRulesModal = document.getElementById('billingRulesModal');
+      const billingRuleRows = document.getElementById('billingRuleRows');
+      const billingRulesSaveBtn = document.getElementById('billingRulesSaveBtn');
+      const billingRulesCancelBtn = document.getElementById('billingRulesCancelBtn');
+      const previewMultiBillingPending = document.getElementById('previewMultiBillingPending');
+      const previewMultiBillingResult = document.getElementById('previewMultiBillingResult');
+      const mbGroupsEl = document.getElementById('mbGroups');
+      const mbCompareGroupsEl = document.getElementById('mbCompareGroups');
+      const mbResultGroupsEl = document.getElementById('mbResultGroups');
+      const previewMultiBillingPartial = document.getElementById('previewMultiBillingPartial');
+      const mbPartialGroups = document.getElementById('mbPartialGroups');
+      const mbPartialActions = document.getElementById('mbPartialActions');
+      const mbPartialCancelBtn = document.getElementById('mbPartialCancelBtn');
+      const mbPartialRetryBtn = document.getElementById('mbPartialRetryBtn');
+      const previewFilePending = document.getElementById('previewFilePending');
+      const fileRows = document.getElementById('fileRows');
+      const fileDetail = document.getElementById('fileDetail');
+      const mbConfirmBtn = document.getElementById('mbConfirmBtn');
+      const mbCancelBtn = document.getElementById('mbCancelBtn');
+      const multiCompareRows = document.getElementById('multiCompareRows');
+      const multiCompareTip = document.getElementById('multiCompareTip');
+      const multiCompareHeadName = document.getElementById('multiCompareHeadName');
+      const multiCompareHeadBound = document.getElementById('multiCompareHeadBound');
+      const multiResultCards = document.getElementById('multiResultCards');
+      const multiHeadName = document.getElementById('multiHeadName');
+      const multiHeadBound = document.getElementById('multiHeadBound');
+      const multiHeadField1 = document.getElementById('multiHeadField1');
+      const multiHeadField2 = document.getElementById('multiHeadField2');
+      const multiHeadSelect = document.getElementById('multiHeadSelect');
+      const multiListBody = document.getElementById('multiListBody');
+      const selectAllUnits = document.getElementById('selectAllUnits');
+      const multiCancelBtn = document.getElementById('multiCancelBtn');
+      const multiConfirmBtn = document.getElementById('multiConfirmBtn');
+      const normalFlowBtn = document.getElementById('normalFlowBtn');
+      const unitNotFoundBtn = document.getElementById('unitNotFoundBtn');
+      const priceCardNotFoundBtn = document.getElementById('priceCardNotFoundBtn');
+      const incompleteBtn = document.getElementById('incompleteBtn');
+      const priceCardIncompleteBtn = document.getElementById('priceCardIncompleteBtn');
+      const multiUnitBtn = document.getElementById('multiUnitBtn');
+      const multiPriceCardBtn = document.getElementById('multiPriceCardBtn');
+      const partialFailBtn = document.getElementById('partialFailBtn');
+      const priceCardPartialFailBtn = document.getElementById('priceCardPartialFailBtn');
+      const billingNoCardBtn = document.getElementById('billingNoCardBtn');
+      const billingNoRuleBtn = document.getElementById('billingNoRuleBtn');
+      const billingIncompleteBtn = document.getElementById('billingIncompleteBtn');
+      const mbMultiBillingBtn = document.getElementById('mbMultiBillingBtn');
+      const mbPartialFailBtn = document.getElementById('mbPartialFailBtn');
+      const fileFlowBtn = document.getElementById('fileFlowBtn');
+
+      // 输入框上方的全部快捷按钮（按当前会话显示其中一部分）
+      const taskActionButtons = [
+        normalFlowBtn, unitNotFoundBtn, priceCardNotFoundBtn,
+        incompleteBtn, priceCardIncompleteBtn, multiUnitBtn, multiPriceCardBtn,
+        partialFailBtn, priceCardPartialFailBtn, billingNoCardBtn, billingNoRuleBtn,
+        billingIncompleteBtn, mbMultiBillingBtn, mbPartialFailBtn, fileFlowBtn
+      ];
+      const panelCancelBtn = document.getElementById('panelCancelBtn');
+      const panelConfirmBtn = document.getElementById('panelConfirmBtn');
+      const chatInput = document.getElementById('chatInput');
+
+      // 任务列表：完全收缩 / 展开
+      const TASK_WIDTH = 240;
+      const CHAT_MIN_WIDTH = 480;
+
+      function collapseTaskList() {
+        taskPanel.classList.add('collapsed-0');
+        taskExpandBtn.classList.remove('is-collapsed');
+      }
+      function expandTaskList() {
+        taskPanel.classList.remove('collapsed-0');
+        taskExpandBtn.classList.add('is-collapsed');
+      }
+
+      taskCollapse.addEventListener('click', collapseTaskList);
+      taskExpandBtn.addEventListener('click', expandTaskList);
+
+      // 结果预览：完全收缩 / 展开
+      previewCollapse.addEventListener('click', function () {
+        previewPanel.classList.add('collapsed-0');
+        resizer.classList.add('is-collapsed');
+        previewExpandBtn.classList.remove('is-collapsed');
+      });
+      previewExpandBtn.addEventListener('click', function () {
+        previewPanel.classList.remove('collapsed-0');
+        resizer.classList.remove('is-collapsed');
+        previewExpandBtn.classList.add('is-collapsed');
+      });
+
+      // 拖拽调宽（第二栏与第三栏之间）
+      let startX = 0, startWidth = 0, dragging = false;
+
+      resizer.addEventListener('mousedown', function (e) {
+        if (previewPanel.classList.contains('collapsed-0')) return;
+        dragging = true;
+        startX = e.clientX;
+        startWidth = previewPanel.getBoundingClientRect().width;
+        document.body.classList.add('resizing');
+        e.preventDefault();
+      });
+
+      window.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        const mainWidth = mainArea.getBoundingClientRect().width;
+        const minWidth = 280;
+        const maxWidth = Math.min(960, mainWidth * 0.7);
+
+        let width = startWidth - (e.clientX - startX);
+        width = Math.max(minWidth, Math.min(width, maxWidth));
+
+        // 对话区最小宽度约束：预览面板变宽导致对话区过窄时，先自动收缩左侧任务列表
+        let taskW = taskPanel.classList.contains('collapsed-0') ? 0 : TASK_WIDTH;
+        if (mainWidth - taskW - 4 - width < CHAT_MIN_WIDTH && taskW > 0) {
+          collapseTaskList();
+          taskW = 0;
+        }
+        // 仍不够则压缩预览面板上限，保证对话区不低于最小宽度（预览面板至少保留 280px）
+        const previewCap = mainWidth - taskW - 4 - CHAT_MIN_WIDTH;
+        width = Math.min(width, Math.max(previewCap, minWidth));
+
+        previewPanel.style.width = width + 'px';
+      });
+
+      window.addEventListener('mouseup', function () {
+        if (!dragging) return;
+        dragging = false;
+        document.body.classList.remove('resizing');
+      });
+
+      /* ============ 任务列表：搜索 ============ */
+      const TASK_ITEM_BASE = 'h-10 flex items-center pl-3 rounded-lg text-sm cursor-pointer';
+      const TASK_ITEM_IDLE = TASK_ITEM_BASE + ' text-[#475569] hover:bg-[#F5F6F8]';
+      const TASK_ITEM_ACTIVE = TASK_ITEM_BASE + ' bg-[#EFF4FF] text-[#2563EB] font-medium';
+
+      // 会话列表：每条会话对应一个场景（scenario）与自己的快捷按钮（actions）
+      const tasks = [
+        {
+          title: '文件解析建档', active: false, hint: '', scenario: 'file',
+          actions: ['fileFlowBtn'] // 该会话只有一个「文件解析建档」快捷按钮
+        },
+        {
+          title: '修改价卡计费', active: true, hint: '', scenario: 'billing',
+          // 正常流程 + 未提供价卡 + 匹配不到计费规则 + 内容不完整 + 多价卡多规则 + 部分失败
+          actions: ['normalFlowBtn', 'billingNoCardBtn', 'billingNoRuleBtn',
+            'billingIncompleteBtn', 'mbMultiBillingBtn', 'mbPartialFailBtn']
+        },
+        {
+          title: '修改价卡信息', active: false, hint: '', scenario: 'pricecard',
+          // 正常流程 + 匹配不到价卡 + 内容不完整 + 多价卡 + 部分失败
+          actions: ['normalFlowBtn', 'priceCardNotFoundBtn', 'priceCardIncompleteBtn',
+            'multiPriceCardBtn', 'priceCardPartialFailBtn']
+        },
+        {
+          title: '修改服务单元', active: false, hint: '', scenario: 'service',
+          // 该会话沿用「内容不完整」，价卡的追问按钮只用在其自己的会话中
+          actions: ['normalFlowBtn', 'unitNotFoundBtn', 'incompleteBtn', 'multiUnitBtn', 'partialFailBtn']
+        }
+      ];
+
+      // 只显示当前会话的快捷按钮（未登记 actions 的会话显示该场景已有会话的按钮组）
+      function showActionsFor(scenario) {
+        let current = tasks.filter(function (t) { return t.scenario === scenario && t.actions; })[0];
+        if (!current) current = tasks.filter(function (t) { return t.scenario === scenario; })[0];
+        const ids = current && current.actions ? current.actions : [];
+        taskActionButtons.forEach(function (btn) {
+          btn.classList.toggle('is-collapsed', ids.indexOf(btn.id) === -1);
+        });
+      }
+
+      function renderTaskList() {
+        const keyword = taskSearch.value.trim().toLowerCase();
+        const matched = tasks.filter(function (task) {
+          return task.title.toLowerCase().indexOf(keyword) !== -1;
+        });
+
+        // 先清空列表项，再按匹配结果重建（空状态节点单独保留在末尾）
+        Array.prototype.slice.call(taskList.querySelectorAll('[data-task-title]')).forEach(function (node) {
+          node.remove();
+        });
+
+        if (matched.length === 0) {
+          taskEmpty.classList.remove('is-collapsed');
+          return;
+        }
+        taskEmpty.classList.add('is-collapsed');
+
+        matched.forEach(function (task) {
+          const item = document.createElement('div');
+          item.className = task.active ? TASK_ITEM_ACTIVE : TASK_ITEM_IDLE;
+          item.setAttribute('data-task-title', task.title);
+
+          const label = document.createElement('span');
+          label.className = 'min-w-0 truncate';
+          label.textContent = task.title;
+          item.appendChild(label);
+
+          item.addEventListener('click', function () {
+            selectTask(task.title);
+          });
+          taskList.appendChild(item);
+        });
+      }
+
+      taskSearch.addEventListener('input', renderTaskList);
+
+      /* ============ 对话区：消息渲染 ============ */
+      const AI_AVATAR =
+        '<div class="w-7 h-7 rounded-full bg-[#2563EB] flex items-center justify-center shrink-0">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="white" aria-hidden="true">' +
+        '<path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/>' +
+        '</svg></div>';
+
+      function appendAiMessage(innerHTML) {
+        const row = document.createElement('div');
+        row.className = 'flex items-start gap-3';
+        row.innerHTML = AI_AVATAR +
+          '<div class="min-w-0 max-w-[70%] rounded-xl border border-[#E5E7EB] px-5 py-3.5 text-sm leading-6 text-[#0F172A]">' +
+          innerHTML +
+          '</div>';
+        messages.appendChild(row);
+      }
+
+      function appendUserMessage(text) {
+        const row = document.createElement('div');
+        row.className = 'flex justify-end';
+        const bubble = document.createElement('div');
+        bubble.className = 'max-w-[70%] rounded-xl bg-[#2563EB] px-5 py-3.5 text-sm leading-6 text-white';
+        bubble.textContent = text;
+        row.appendChild(bubble);
+        messages.appendChild(row);
+      }
+
+      // 滚动到底部，使最新消息始终可见
+      function scrollMessagesToBottom() {
+        setTimeout(function () {
+          messageScroll.scrollTop = messageScroll.scrollHeight;
+        }, 0);
+      }
+
+      /* ============ 数据面板：状态切换 / 空状态 ============ */
+      let panelMode = 'single'; // 'single'（单服务单元字段修改） | 'multi'（多服务单元选择）
+
+      function setPanelState(state) {
+        previewEmpty.classList.toggle('is-collapsed', state !== 'empty');
+        previewResult.classList.toggle('is-collapsed', !(state === 'result' && panelMode === 'single'));
+        previewPending.classList.toggle('is-collapsed', !(state === 'pending' && panelMode === 'single'));
+        previewMultiPending.classList.toggle('is-collapsed', !(state === 'pending' && panelMode === 'multi'));
+        previewMultiResult.classList.toggle('is-collapsed', !(state === 'result' && panelMode === 'multi'));
+        previewPartialResult.classList.toggle('is-collapsed', !(state === 'result' && panelMode === 'partial'));
+        previewBillingPending.classList.toggle('is-collapsed', !(state === 'pending' && panelMode === 'billing'));
+        previewBillingResult.classList.toggle('is-collapsed', !(state === 'result' && panelMode === 'billing'));
+        previewMultiBillingPending.classList.toggle('is-collapsed', !(state === 'pending' && panelMode === 'multibilling'));
+        previewMultiBillingResult.classList.toggle('is-collapsed', !(state === 'result' && panelMode === 'multibilling' && !mbPartialState));
+        previewMultiBillingPartial.classList.toggle('is-collapsed', !(state === 'result' && panelMode === 'multibilling' && mbPartialState));
+        previewFilePending.classList.toggle('is-collapsed', !(state === 'pending' && panelMode === 'file'));
+
+        // 待确认时锁定输入框；部分成功/失败且仍有失败项时同样锁定（等待重试或取消）
+        // 重试成功后仅剩成功卡片，输入框恢复可用
+        const hasFailed = partialResults.some(function (r) { return r.status === 'failed'; });
+        const mbFailed = mbPartialState && mbHasFailed();
+        chatInput.disabled =
+          (state === 'pending' && !(panelMode === 'file' && fileAllDone)) ||
+          (state === 'result' && panelMode === 'partial' && hasFailed) ||
+          (state === 'result' && panelMode === 'multibilling' && mbFailed);
+        // 仅当还有失败项待重试时，展示底部 [取消] [重试] 操作条
+        if (partialActions) partialActions.classList.toggle('is-collapsed', !(state === 'result' && panelMode === 'partial' && hasFailed));
+        if (mbPartialActions) mbPartialActions.classList.toggle('is-collapsed', !(state === 'result' && panelMode === 'multibilling' && mbFailed));
+        if (state === 'pending') renderPending(); // 渲染表格值与对比数据
+        else if (state === 'empty') resetPending(); // 回到空状态时清空表格与对比数据
+      }
+
+      function showPreviewEmpty(hint) {
+        previewEmpty.textContent = '';
+
+        const iconBox = document.createElement('div');
+        iconBox.className = 'w-12 h-12 rounded-xl border border-[#E5E7EB] flex items-center justify-center';
+        iconBox.innerHTML =
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>';
+
+        const heading = document.createElement('div');
+        heading.className = 'mt-4 text-sm font-medium text-[#0F172A]';
+        heading.textContent = '数据面板';
+
+        const desc = document.createElement('div');
+        desc.className = 'mt-1 text-xs text-[#94A3B8] text-center leading-5';
+        desc.textContent = '解析结果、变更内容将在此展示，可调整并确认';
+
+        previewEmpty.appendChild(iconBox);
+        previewEmpty.appendChild(heading);
+        previewEmpty.appendChild(desc);
+
+        if (hint) {
+          const tip = document.createElement('div');
+          tip.className = 'mt-3 text-xs text-[#94A3B8] text-center leading-5 max-w-[200px]';
+          tip.textContent = hint;
+          previewEmpty.appendChild(tip);
+        }
+      }
+
+      function showPanel() {
+        previewPanel.classList.remove('collapsed-0');
+        resizer.classList.remove('is-collapsed');
+        previewExpandBtn.classList.add('is-collapsed');
+      }
+
+      /* ============ 主流程：修改服务单元信息 ============ */
+      const FLOW_USER_TEXT = '把 H-59 的履约抛比改成 6000。';
+      const FLOW_CANCEL_TEXT = '已取消本次修改，原数据不变。';
+      const UNIT_NAME = 'H-59 HKDHL';
+      const RESULT_TIME = '2026-10-13 15:30'; // 结果卡片上的变更时间
+
+      // 初始对话（修改内容不完整）与匹配失败场景的文案
+      const OPENING_USER_TEXT = '改一下 H-59。';
+      const OPENING_AI_TEXT = '请说明您要修改的内容及修改后的结果。';
+      const NOT_FOUND_USER_TEXT = '把 H-59 HKDHL 的履约抛比改成 6000。';
+      const NOT_FOUND_AI_TEXT = '未找到匹配的服务单元，请检查名称后重新输入。';
+
+      // 点击「正常流程」：重放该场景的完整对话
+      function runNormalFlow() {
+        if (chatInput.disabled) return; // 待确认状态下不重复触发
+        singleMode = 'service'; // 服务单元字段流程
+        panelMode = 'single'; // 切回单服务单元面板
+        setActiveFields(['履约抛比']); // 正常流程只修改「履约抛比」（与对话中的诉求一致）
+        resetConversation();
+        playStory([
+          { type: 'user', text: FLOW_USER_TEXT },
+          {
+            type: 'ai',
+            text: '已定位到服务单元【' + UNIT_NAME + '】，请在右侧数据面板确认。',
+            panel: 'pending'
+          }
+        ]);
+      }
+
+      /* ============ 场景对话时间线（重放完整闭环） ============ */
+      const STORY_STEP_MS = 420;
+
+      // 清空对话区与输入框，并把数据面板复位到空状态
+      // （各场景先调用它，之后再按自己的节奏推进面板状态，避免覆盖）
+      function resetConversation() {
+        messages.textContent = '';
+        chatInput.value = '';
+        showPanel();
+        setPanelState('empty');
+      }
+
+      // 依次播放对话步骤：{ type: 'user' | 'ai', text, panel?, unitListRendered?, disableInput? }
+      // 每个场景的对话都以统一的 AI 打招呼语开场
+      function playStory(steps) {
+        let delay = 0;
+        const full = [{ type: 'ai', text: AI_GREETING }].concat(steps);
+        full.forEach(function (step, i) {
+          delay = i === 0 ? 0 : delay + STORY_STEP_MS;
+          setTimeout(function () {
+            if (step.presetUnits) presetUnits(step.presetUnits);
+            if (step.run) step.run();
+            if (step.type === 'user') appendUserMessage(step.text);
+            else if (step.type === 'ai') appendAiMessage(step.text);
+            if (step.panel) setPanelState(step.panel);
+            if (step.unitListRendered) renderMultiPending(); // 列表渲染完再同步勾选与对比
+            if (step.disableInput) chatInput.disabled = true;
+            scrollMessagesToBottom();
+          }, delay);
+        });
+      }
+
+      // 场景三：修改内容不完整 —— 用户只说了服务单元，AI 追问要改什么、改成什么
+      function runIncompleteFlow() {
+        if (chatInput.disabled) return;
+        panelMode = 'single';
+        setActiveFields();
+        resetConversation();
+        playStory([
+          { type: 'user', text: OPENING_USER_TEXT },
+          { type: 'ai', text: OPENING_AI_TEXT }
+        ]);
+      }
+
+      // 按钮随时可重新开始：先解除输入框锁定并清掉待重试标记
+      function forceResetForDemo() {
+        partialArm = false;
+        chatInput.disabled = false;
+      }
+
+      // 场景四：定位到多个服务单元 —— 列表勾选后批量修改
+      function runMultiUnitFlow() {
+        forceResetForDemo();
+        setMultiKind('unit'); // 面板承载服务单元
+        applyUnitScenario('multi'); // 本场景使用 2026-10-09 → 2026-10-10
+        resetConversation(); // 先清空上一轮对话与面板
+        openMultiUnitPanel(); // 直接进入待确认列表（输入框随之禁用）
+        playStory([
+          { type: 'user', text: DHL_NOTIFY },
+          { type: 'ai', text: MULTI_AI_ASK, unitListRendered: true, disableInput: true }
+        ]);
+      }
+
+      // 场景十一：多价卡 · 确认后部分成功、部分失败
+      // 选择阶段与「多价卡」一致：预置勾选上海仓价卡与深圳仓价卡并展示对比，
+      // 之后由用户点击 [确认] 触发执行（上海仓价卡成功、深圳仓价卡失败）
+      function runPriceCardPartialFailFlow() {
+        forceResetForDemo();
+        setMultiKind('pricecard'); // 面板承载价卡
+        resetConversation();       // 先复位（会把面板清空）
+        openMultiUnitPanel();      // 再打开价卡选择面板并展示对比
+        partialArm = true;         // 用户点击 [确认] 时按「部分成功、部分失败」执行
+        playStory([
+          { type: 'user', text: PRICE_CARD_MULTI_NOTIFY },
+          { type: 'ai', text: PRICE_CARD_MULTI_AI_ASK, unitListRendered: true },
+          { type: 'action', presetUnits: ['DHL-上海仓价卡', 'DHL-深圳仓价卡'], delay: 900 }
+        ]);
+      }
+
+      // 场景十：定位到多个价卡（全部成功）—— 列表勾选后批量修改价卡
+      function runPriceCardMultiFlow() {
+        forceResetForDemo();
+        setMultiKind('pricecard'); // 面板承载价卡
+        resetConversation();       // 先复位（会把面板清空）
+        openMultiUnitPanel();      // 再打开价卡选择面板并展示对比（输入框随之禁用）
+        playStory([
+          { type: 'user', text: PRICE_CARD_MULTI_NOTIFY },
+          { type: 'ai', text: PRICE_CARD_MULTI_AI_ASK, unitListRendered: true, disableInput: true }
+        ]);
+      }
+
+      // 场景九：追问——修改内容不完整（价卡）——数据面板保持空状态，输入框保持可用
+      function runPriceCardIncompleteFlow() {
+        forceResetForDemo();
+        singleMode = 'pricecard';
+        panelMode = 'single';
+        priceCardFields = PRICE_CARD.fields.map(function (f) { return Object.assign({}, f); });
+        resetConversation();
+        showPreviewEmpty(); // 空状态：不展示表格与对比数据
+        setPanelState('empty');
+        playStory([
+          { type: 'user', text: PRICE_CARD_INCOMPLETE_USER_TEXT },
+          { type: 'ai', text: INCOMPLETE_AI_TEXT }
+        ]);
+      }
+
+      // 场景八：无法定位到指定价卡 —— 提示重新输入，数据面板保持空状态，输入框保持可用
+      function runPriceCardNotFoundFlow() {
+        forceResetForDemo();
+        singleMode = 'pricecard';
+        panelMode = 'single';
+        priceCardFields = PRICE_CARD.fields.map(function (f) { return Object.assign({}, f); });
+        resetConversation();
+        showPreviewEmpty(); // 空状态：不展示表格与对比数据
+        setPanelState('empty');
+        playStory([
+          { type: 'user', text: PRICE_CARD.userText },
+          { type: 'ai', text: PRICE_CARD_NOT_FOUND_TEXT }
+        ]);
+      }
+
+      // 场景七：修改价卡信息（独立会话，与服务单元场景无关）
+      function runPriceCardFlow() {
+        forceResetForDemo();
+        singleMode = 'pricecard';
+        panelMode = 'single';
+        // 重置为价卡初始值
+        priceCardFields = PRICE_CARD.fields.map(function (f) { return Object.assign({}, f); });
+        resetConversation();
+        playStory([
+          { type: 'user', text: PRICE_CARD.userText },
+          { type: 'ai', text: PRICE_CARD.aiText, panel: 'pending' }
+        ]);
+      }
+
+      // 场景二：无法定位到指定服务单元 —— 提示用户重新输入，数据面板保持空状态
+      function runUnitNotFoundFlow() {
+        if (chatInput.disabled) return;
+        panelMode = 'single';
+        resetConversation();
+        playStory([
+          { type: 'user', text: NOT_FOUND_USER_TEXT },
+          { type: 'ai', text: NOT_FOUND_AI_TEXT }
+        ]);
+      }
+
+      function confirmModify() {
+        if (panelMode === 'billing') { confirmBilling(); return; }
+        if (panelMode === 'multibilling') { confirmMultiBilling(); return; }
+        const changes = getChanges(); // 先取本次变更（提交后原值会被覆盖）
+        const isPriceCard = singleMode === 'pricecard';
+        singleFields().forEach(function (f) {
+          f.original = f.value; // 提交：草稿值转为当前值
+        });
+        renderCardChanges(changes);
+        renderCompareRows(); // 变更已提交，待确认面板不再显示差异
+        setPanelState('result');
+        appendUserMessage('用户已确认');
+        appendAiMessage(isPriceCard
+          ? '修改成功，具体修改内容请在右侧数据面板查看。'
+          : '修改成功，具体内容请在右侧数据面板查看。');
+        scrollMessagesToBottom();
+      }
+
+      function cancelModify() {
+        if (panelMode === 'billing') { cancelBilling(); return; }
+        if (panelMode === 'multibilling') { cancelMultiBilling(); return; }
+        setPanelState('empty');
+        appendUserMessage('用户已取消');
+        appendAiMessage(FLOW_CANCEL_TEXT);
+        scrollMessagesToBottom();
+      }
+
+      /* 本次要修改的字段（数据源）：id 对应表格列的 data-field-value / data-field-edit */
+      // 需与表格静态标记中的初始值保持一致；草稿值在「确认」时才提交为当前值
+      const fields = [
+        { id: '履约抛比', value: '6000', original: '5000' },
+        { id: '每日负载容量', value: '2000', original: '1500' }
+      ];
+
+      /* ============ 修改价卡信息（独立场景，与上面的服务单元流程无关） ============ */
+      // 价卡名称、绑定服务单元为固定列；生效开始时间为本次要修改的动态列
+      const PRICE_CARD = {
+        name: '百运美国空运价卡',
+        boundUnit: 'KLS中技物流-美国空运',
+        fields: [{ id: '生效开始时间', value: '2026-10-01 00:00:00', original: '2026-09-01 00:00:00' }],
+        title: '修改价卡信息',
+        userText: '把百运美国空运价卡的生效开始时间改成 2026-10-01 00:00:00。',
+        aiText: '已定位到价卡【百运美国空运价卡】，请在右侧数据面板确认。',
+        confirmText: '已生成成本价卡新版本 V2，原版本已转为历史版本。'
+      };
+
+      // 当前单服务单元面板承载的场景：'service'（服务单元字段）| 'pricecard'（价卡信息）
+      let singleMode = 'service';
+      let priceCardFields = PRICE_CARD.fields.map(function (f) { return Object.assign({}, f); });
+
+      // 本次场景涉及的可编辑字段；不同场景可只聚焦其中一个字段
+      let activeFieldIds = fields.map(function (f) { return f.id; });
+
+      function setActiveFields(ids) {
+        activeFieldIds = ids && ids.length ? ids.slice() : fields.map(function (f) { return f.id; });
+        // 不在本次聚焦范围内的字段：草稿值回退为原值，避免出现用户并未提出的改动
+        singleFields().forEach(function (f) {
+          if (activeFieldIds.indexOf(f.id) === -1) f.value = f.original;
+        });
+      }
+
+      const compareRows = document.getElementById('compareRows');
+      const compareTip = document.getElementById('compareTip');
+      const cardChanges = document.getElementById('cardChanges');
+      const compareHeadName = document.getElementById('compareHeadName');
+      const compareHeadBound = document.getElementById('compareHeadBound');
+      const singleTableHead = document.getElementById('singleTableHead');
+      const singleTableBody = document.getElementById('singleTableBody');
+      const editButtons = Array.prototype.slice.call(document.querySelectorAll('[data-field-edit]'));
+
+      function getField(id) {
+        return singleFields().filter(function (f) { return f.id === id; })[0];
+      }
+
+      // 当前单服务单元面板承载的字段：服务单元流程 或 价卡流程
+      function singleFields() {
+        return singleMode === 'pricecard' ? priceCardFields : fields;
+      }
+
+      // 表格的固定列（名称列 / 绑定列）
+      function singleFixedColumns() {
+        return singleMode === 'pricecard'
+          ? [{ label: '价卡名称', value: PRICE_CARD.name }, { label: '绑定服务单元', value: PRICE_CARD.boundUnit }]
+          : [{ label: '服务单元名称', value: UNIT_NAME }, { label: '服务商名称', value: UNIT_NAME }];
+      }
+
+      function fieldValueEl(id) {
+        return document.querySelector('[data-field-value="' + id + '"]');
+      }
+
+      // 本次修改的内容（草稿值 ≠ 原值即视为一条变更），一次修改多个字段即多行
+      // 仅统计当前场景聚焦的字段（activeFieldIds）
+      function getChanges() {
+        const active = singleMode === 'pricecard'
+          ? priceCardFields.map(function (f) { return f.id; })
+          : activeFieldIds;
+        return singleFields()
+          .filter(function (f) {
+            return active.indexOf(f.id) !== -1 && f.value !== f.original;
+          })
+          .map(function (f) { return { field: f.id, from: f.original, to: f.value }; });
+      }
+
+      // 按当前场景渲染单服务单元表格的表头与数据行
+      function renderSingleRow() {
+        const headRow = document.createElement('tr');
+        singleFixedColumns().forEach(function (col) {
+          const th = document.createElement('th');
+          th.className = 'px-2 py-2 font-medium';
+          th.textContent = col.label;
+          headRow.appendChild(th);
+        });
+        singleFields().forEach(function (f) {
+          const th = document.createElement('th');
+          th.className = 'px-2 py-2 font-medium';
+          th.textContent = f.id; // 本次要修改的字段
+          headRow.appendChild(th);
+        });
+        const thOp = document.createElement('th');
+        thOp.className = 'px-2 py-2 font-medium text-right';
+        thOp.textContent = '操作';
+        headRow.appendChild(thOp);
+        renderRowsInto(singleTableHead, [headRow]);
+
+        const row = document.createElement('tr');
+        row.className = 'border-t border-[#E5E7EB]';
+        singleFixedColumns().forEach(function (col) {
+          const td = document.createElement('td');
+          td.className = 'px-2 py-2.5 truncate';
+          td.setAttribute('title', col.value);
+          td.textContent = col.value;
+          row.appendChild(td);
+        });
+        singleFields().forEach(function (f) {
+          const td = document.createElement('td');
+          td.className = 'px-2 py-2.5 font-medium text-[#2563EB]'; // 修改字段：蓝字、无背景
+          td.setAttribute('data-field-value', f.id);
+          td.textContent = f.value;
+          row.appendChild(td);
+        });
+        const tdOp = document.createElement('td');
+        tdOp.className = 'px-2 py-2.5 text-right';
+        const btn = document.createElement('button');
+        btn.className = 'text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer';
+        btn.setAttribute('data-field-edit', '全部');
+        btn.textContent = '编辑';
+        tdOp.appendChild(btn);
+        row.appendChild(tdOp);
+        renderRowsInto(singleTableBody, [row]);
+      }
+
+      // 对比行：名称与绑定列仅首行展示，后续行留空
+      function buildCompareRows(changes) {
+        const fixed = singleFixedColumns();
+        return changes.map(function (change, i) {
+          const row = document.createElement('tr');
+          row.className = 'border-t border-[#E5E7EB]';
+          row.setAttribute('data-compare-row', '');
+
+          const cells = [
+            [i === 0 ? fixed[0].value : '', 'px-1.5 py-2.5 truncate'],
+            [i === 0 ? fixed[1].value : '', 'px-1.5 py-2.5 truncate'],
+            [change.field, 'px-1.5 py-2.5'],
+            [change.from, 'px-1.5 py-2.5 text-[#94A3B8]'],
+            [change.to, 'px-1.5 py-2.5 font-semibold text-[#16A34A]']
+          ];
+          cells.forEach(function (cell) {
+            const td = document.createElement('td');
+            td.className = cell[1];
+            td.textContent = cell[0];
+            row.appendChild(td);
+          });
+          return row;
+        });
+      }
+
+      function renderRowsInto(target, rows) {
+        target.textContent = '';
+        rows.forEach(function (row) { target.appendChild(row); });
+      }
+
+      function renderCompareRows() {
+        renderRowsInto(compareRows, buildCompareRows(getChanges()));
+      }
+
+      // 结果卡片：成功状态条 + 信息栏（左：名称 | 服务商/绑定；右：新版本号 + 变更时间）
+      // + 结果表格（字段 / 原值 / 新值），三部分连在一起、中间无间隔
+      function renderCardChanges(changes) {
+        const fixed = singleFixedColumns();
+        const v1 = document.createElement('span');
+        v1.className = 'mr-4';
+        v1.innerHTML = '新版本号：<span class="font-medium text-[#2563EB]">V2</span>';
+        const v2 = document.createElement('span');
+        v2.innerHTML = '变更时间：<span class="text-[#0F172A]">' + RESULT_TIME + '</span>';
+        const card = buildMbTable({
+          minWidth: 'min-w-[420px]',
+          rightAlignLast: false,
+          statusBar: true, // 绿色成功状态条 + 对勾 + 「修改成功」
+          columns: ['字段', '原值', '新值'],
+          infoLeft: fixed.map(function (c) { return c.value; }),
+          infoRight: [v1, v2],
+          rows: changes.map(function (change) {
+            return [
+              mbCell(change.field, 'px-3 py-2.5 whitespace-nowrap'),
+              mbCell(change.from, 'px-3 py-2.5 whitespace-nowrap text-[#94A3B8]'),          // 原值灰
+              mbCell(change.to, 'px-3 py-2.5 whitespace-nowrap font-semibold text-[#16A34A]') // 新值绿加粗
+            ];
+          })
+        });
+        renderRowsInto(cardChanges, [card]);
+      }
+
+      // 清空待确认面板的表格值与对比数据（供空状态复用）
+      function resetPending() {
+        fields.forEach(function (f) {
+          const cell = fieldValueEl(f.id);
+          if (cell) cell.textContent = f.value; // 丢弃未提交的草稿编辑
+        });
+        compareRows.textContent = '';
+        compareTip.classList.add('is-collapsed');
+        panelConfirmBtn.disabled = false;
+        panelConfirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        // 多服务单元面板一并复位
+        multiCompareRows.textContent = '';
+        multiCompareTip.classList.remove('is-collapsed');
+        resetUnits();
+        multiConfirmBtn.disabled = true;
+        // 部分成功/失败：清空执行结果（已成功的修改不回滚，仅清空面板）
+        partialResults = [];
+        partialArm = false;
+        if (partialCards) partialCards.textContent = '';
+        // 修改价卡计费：复位草稿与弹框
+        resetBilling();
+        // 多价卡多计费：复位分组与勾选
+        resetMultiBilling();
+        // 文件解析建档：复位服务单元列表与处理状态
+        resetFileUnits();
+      }
+
+      // 把待确认面板的表格与对比重置为当前场景
+      function resetSinglePanel() {
+        renderSingleRow();
+        renderPending();
+      }
+
+      // 待确认面板的值与「无变更」提示
+      function renderPending() {
+        if (panelMode === 'multi') { renderMultiPending(); return; }
+        if (panelMode === 'billing') { renderBillingPending(); return; }
+        if (panelMode === 'multibilling') { renderMultiBillingPending(); return; }
+        if (panelMode === 'file') { renderFilePending(); return; }
+        renderSingleRow(); // 表格按当前场景（服务单元 / 价卡）渲染
+        // 对比表头前两列随场景：价卡名称 / 绑定服务单元
+        const fixed = singleFixedColumns();
+        compareHeadName.textContent = fixed[0].label;
+        compareHeadBound.textContent = fixed[1].label;
+        const changes = getChanges();
+        if (changes.length === 0) {
+          compareRows.textContent = '';
+          compareTip.textContent = '当前值与数据库中的原值一致，确认后不会产生新版本。';
+          compareTip.classList.remove('is-collapsed');
+          panelConfirmBtn.disabled = true;
+          panelConfirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+          renderRowsInto(compareRows, buildCompareRows(changes));
+          compareTip.classList.add('is-collapsed');
+          panelConfirmBtn.disabled = false;
+          panelConfirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      }
+
+      // 把草稿值同步到表格单元格
+      function syncFieldCells() {
+        singleFields().forEach(function (f) {
+          const cell = fieldValueEl(f.id);
+          if (cell) cell.textContent = f.value;
+        });
+      }
+
+      function setFieldValue(id, value) {
+        const f = getField(id);
+        if (!f) return;
+        f.value = String(value);
+        syncFieldCells();
+        renderPending();
+      }
+
+      /* ============ 多对象选择（多服务单元 / 多价卡共用同一面板） ============ */
+      // 面板承载的对象类型：'unit'（服务单元）| 'pricecard'（价卡）
+      let multiKind = 'unit';
+      let UNIT_FIELDS = ['接单时间', '截单时间'];
+      // 各对象的当前值（target 为通知要求改成的新值，勾选后即形成「本次修改对比」，可经 [编辑] 调整）
+      // 数值由各场景的 unitValues 注入（多服务单元 / 部分失败 / 多价卡使用不同日期）
+      let units = [
+        { name: 'DHL-上海仓', vendor: 'DHL', current: {}, target: {}, selected: false },
+        { name: 'DHL-深圳仓', vendor: 'DHL', current: {}, target: {}, selected: false },
+        { name: 'DHL-香港仓', vendor: 'DHL', current: {}, target: {}, selected: false }
+      ];
+
+      // 价卡列（多价卡）：价卡名称 + 绑定服务单元 + 本次要修改的字段
+      const PRICE_CARD_MULTI_FIELDS = ['生效开始时间', '生效结束时间'];
+      const PRICE_CARD_MULTI_CURRENT = {
+        生效开始时间: '2026-10-12 00:00:00',
+        生效结束时间: '2026-12-31 00:00:00'
+      };
+      const PRICE_CARD_MULTI_TARGET = {
+        生效开始时间: '2026-10-13 00:00:00',
+        生效结束时间: '2026-12-31 00:00:00'
+      };
+      const PRICE_CARD_MULTI_ROWS = [
+        { name: 'DHL-上海仓价卡', vendor: 'DHL-上海仓' },
+        { name: 'DHL-深圳仓价卡', vendor: 'DHL-深圳仓' },
+        { name: 'DHL-香港仓价卡', vendor: 'DHL-香港仓' }
+      ];
+
+      function buildMultiRows(rows, base) {
+        return rows.map(function (r) {
+          return {
+            name: r.name,
+            vendor: r.vendor,
+            current: Object.assign({}, base.current),
+            target: Object.assign({}, base.target),
+            selected: false
+          };
+        });
+      }
+
+      // 切换面板对象类型：价卡（名称/绑定服务单元）+ 生效时间字段，或服务单元（名称/服务商）+ 接单/截单
+      function setMultiKind(kind) {
+        multiKind = kind;
+        if (kind === 'pricecard') {
+          UNIT_FIELDS = PRICE_CARD_MULTI_FIELDS.slice();
+          unitValues = { current: PRICE_CARD_MULTI_CURRENT, target: PRICE_CARD_MULTI_TARGET };
+          units = buildMultiRows(PRICE_CARD_MULTI_ROWS, unitValues);
+        } else {
+          UNIT_FIELDS = ['接单时间', '截单时间'];
+          units = [
+            { name: 'DHL-上海仓', vendor: 'DHL', current: {}, target: {}, selected: false },
+            { name: 'DHL-深圳仓', vendor: 'DHL', current: {}, target: {}, selected: false },
+            { name: 'DHL-香港仓', vendor: 'DHL', current: {}, target: {}, selected: false }
+          ];
+        }
+        multiCompareHeadName.textContent = multiKindNameLabel();
+        multiCompareHeadBound.textContent = multiKindBoundLabel();
+      }
+
+      function multiKindNameLabel() { return multiKind === 'pricecard' ? '价卡名称' : '服务单元名称'; }
+      function multiKindBoundLabel() { return multiKind === 'pricecard' ? '绑定服务单元' : '服务商名称'; }
+
+      // 按当前对象类型重建列表的表头文案与数据行（勾选框 / 名称 / 绑定 / 字段 / 编辑）
+      function renderMultiList() {
+        multiHeadName.textContent = multiKindNameLabel();
+        multiHeadBound.textContent = multiKindBoundLabel();
+        if (multiHeadField1) multiHeadField1.textContent = UNIT_FIELDS[0];
+        if (multiHeadField2) multiHeadField2.textContent = UNIT_FIELDS[1];
+        // 第一列（选择列）：表头为「全选」复选框（价卡与服务单元场景一致）
+        if (multiHeadSelect) {
+          if (selectAllUnits) selectAllUnits.classList.remove('is-collapsed');
+        }
+
+        const rows = units.map(function (u) {
+          const row = document.createElement('tr');
+          row.className = 'border-t border-[#E5E7EB]';
+
+          const tdBox = document.createElement('td');
+          tdBox.className = 'px-2 py-2.5';
+          const box = document.createElement('input');
+          box.type = 'checkbox';
+          box.checked = u.selected;
+          box.setAttribute('data-unit-select', u.name);
+          box.className = 'w-3.5 h-3.5 align-middle accent-[#2563EB] cursor-pointer';
+          box.addEventListener('change', function () {
+            u.selected = box.checked;
+            renderMultiPending();
+          });
+          tdBox.appendChild(box);
+          row.appendChild(tdBox);
+
+          [u.name, u.vendor].forEach(function (value) {
+            const td = document.createElement('td');
+            td.className = 'px-2 py-2.5 truncate';
+            td.setAttribute('title', value);
+            td.textContent = value;
+            row.appendChild(td);
+          });
+
+          UNIT_FIELDS.forEach(function (f) {
+            const td = document.createElement('td');
+            td.className = 'px-2 py-2.5 font-medium text-[#2563EB]'; // 修改字段：蓝字、无背景
+            td.setAttribute('data-unit-value', u.name + '|' + f);
+            setCellValue(td, u.current[f]);
+            row.appendChild(td);
+          });
+
+          const tdOp = document.createElement('td');
+          tdOp.className = 'px-2 py-2.5 text-right';
+          const btn = document.createElement('button');
+          btn.className = 'text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer';
+          btn.setAttribute('data-unit-edit', u.name);
+          btn.textContent = '编辑';
+          btn.addEventListener('click', function () { editUnit(u.name); });
+          tdOp.appendChild(btn);
+          row.appendChild(tdOp);
+          return row;
+        });
+        renderRowsInto(multiListBody, rows);
+      }
+
+      // 各场景的服务单元时间（原值 2026-10-09 → 新值 2026-10-10；部分失败场景用 10-12 → 10-13）
+      const SCENARIO_UNIT_VALUES = {
+        multi: {
+          current: { 接单时间: '2026-10-09 09:00', 截单时间: '2026-10-09 18:00' },
+          target: { 接单时间: '2026-10-10 09:00', 截单时间: '2026-10-10 18:00' },
+          // 个别服务单元原值上的差异（未列出的沿用上面的 current）
+          overrides: {
+            'DHL-深圳仓': { 接单时间: '2026-10-09 08:30', 截单时间: '2026-10-09 17:30' }
+          }
+        },
+        partial: {
+          current: { 接单时间: '2026-10-12 09:00', 截单时间: '2026-10-12 18:00' },
+          target: { 接单时间: '2026-10-13 09:00', 截单时间: '2026-10-13 18:00' },
+          // 个别服务单元原值上的差异（未列出的沿用上面的 current）
+          overrides: {
+            'DHL-深圳仓': { 接单时间: '2026-10-12 08:30', 截单时间: '2026-10-12 17:30' }
+          }
+        }
+      };
+
+      // 当前场景的服务单元数值（默认多服务单元）
+      let unitValues = SCENARIO_UNIT_VALUES.multi;
+
+      // 某服务单元在当前场景下的初始值（合并该服务单元的差异项）
+      function unitScenarioValues(name) {
+        const o = unitValues.overrides && unitValues.overrides[name];
+        return {
+          current: Object.assign({}, unitValues.current, o || {}),
+          target: Object.assign({}, unitValues.target)
+        };
+      }
+
+      function applyUnitValues() {
+        units.forEach(function (u) {
+          const v = unitScenarioValues(u.name);
+          u.current = v.current;
+          u.target = v.target;
+        });
+      }
+      applyUnitValues();
+
+      // 切换场景时套用该场景的服务单元数值
+      function applyUnitScenario(key) {
+        unitValues = SCENARIO_UNIT_VALUES[key] || SCENARIO_UNIT_VALUES.multi;
+        applyUnitValues();
+      }
+
+      // 把各服务单元的值恢复为当前场景的设定值（不改变勾选状态）
+      function revertUnitsToScenario() {
+        units.forEach(function (u) {
+          const v = unitScenarioValues(u.name);
+          u.current = v.current;
+          u.target = v.target;
+        });
+        syncUnits();
+      }
+
+      function resetUnits() {
+        units.forEach(function (u) {
+          u.selected = false;
+          const v = unitScenarioValues(u.name);
+          u.current = v.current;
+          u.target = v.target;
+        });
+        syncUnits();
+      }
+
+      const DHL_NOTIFY = 'DHL 通知：接单时间改为 2026-10-10 09:00，截单时间改为 2026-10-10 18:00。';
+      const DHL_NOTIFY_PARTIAL = 'DHL 通知：接单时间改为 2026-10-13 09:00，截单时间改为 2026-10-13 18:00。';
+      // 无法定位到指定价卡时的提示
+      const PRICE_CARD_NOT_FOUND_TEXT = '未找到匹配的价卡，请检查名称后重新输入。';
+      // 修改内容不完整：价卡的追问文案（与服务单元场景共用一句追问语）
+      const PRICE_CARD_INCOMPLETE_USER_TEXT = '改一下百运美国空运价卡。';
+      const INCOMPLETE_AI_TEXT = '请说明您要修改的内容及修改后的结果。';
+      // 多价卡：用户通知与 AI 追问
+      const PRICE_CARD_MULTI_NOTIFY = 'DHL 通知：生效开始时间改为 2026-10-13 00:00:00，生效结束时间改为 2026-12-31 00:00:00。';
+      const PRICE_CARD_MULTI_AI_ASK = '找到多个与 DHL 相关的价卡，请在右侧选择要修改的价卡。';
+
+      // 字段值统一为「日期 + 时间」；单元格内一行展示，日期与时间同色（继承字段本身的颜色）
+      function setCellValue(td, value) {
+        const parts = String(value).split(' ');
+        if (parts.length !== 2) {
+          td.textContent = value;
+          td.removeAttribute('title');
+          return;
+        }
+        td.textContent = '';
+        td.setAttribute('title', value);
+        const dateEl = document.createElement('span');
+        dateEl.textContent = parts[0];
+        const timeEl = document.createElement('span');
+        timeEl.textContent = ' ' + parts[1];
+        td.appendChild(dateEl);
+        td.appendChild(timeEl);
+      }
+      const MULTI_AI_ASK = '找到多个与 DHL 相关的服务单元，请在右侧选择要修改的服务单元。';
+
+      function getUnit(name) {
+        return units.filter(function (u) { return u.name === name; })[0];
+      }
+
+      function unitCheckbox(name) {
+        return document.querySelector('[data-unit-select="' + name + '"]');
+      }
+
+      function unitValueEl(unitName, fieldName) {
+        return document.querySelector('[data-unit-value="' + unitName + '|' + fieldName + '"]');
+      }
+
+      // 把当前值同步到列表单元格、勾选框与「全选」状态
+      function syncUnits() {
+        units.forEach(function (u) {
+          UNIT_FIELDS.forEach(function (f) {
+            const cell = unitValueEl(u.name, f);
+            if (cell) setCellValue(cell, u.current[f]);
+          });
+          const box = unitCheckbox(u.name);
+          if (box) box.checked = u.selected;
+        });
+        const allSelected = units.length > 0 && units.every(function (u) { return u.selected; });
+        if (selectAllUnits) selectAllUnits.checked = allSelected; // 表头全选复选框
+      }
+
+      // 勾选的服务单元：本次要修改的字段（新值 = 通知要求的 09:00 / 15:30，可经 [编辑] 调整）
+      // 对比表与结果卡片列出该服务单元本次要改的全部字段（含值未变化的，如 09:00 → 09:00）；
+      // changed 用于判断该服务单元是否真的有变更（无变更则确认按钮不可用）
+      function getSelectedUnitChanges() {
+        return units.filter(function (u) { return u.selected; }).map(function (u) {
+          const changes = UNIT_FIELDS.map(function (f) {
+            return { field: f, from: u.current[f], to: u.target[f] };
+          });
+          const changed = UNIT_FIELDS.some(function (f) { return u.current[f] !== u.target[f]; });
+          return { unit: u, changes: changes, changed: changed };
+        });
+      }
+
+      // 多服务单元对比行：每个服务单元一段，名称与列名仅在该段首行展示
+      function buildMultiCompareRows(selected) {
+        const rows = [];
+        selected.forEach(function (entry) {
+          entry.changes.forEach(function (change, i) {
+            const row = document.createElement('tr');
+            row.className = 'border-t border-[#E5E7EB]';
+            row.setAttribute('data-compare-row', '');
+            const cells = [
+              [i === 0 ? entry.unit.name : '', 'px-1.5 py-2.5 truncate'],
+              [i === 0 ? entry.unit.vendor : '', 'px-1.5 py-2.5 truncate'],
+              [change.field, 'px-1.5 py-2.5'],
+              [change.from, 'px-1.5 py-2.5 text-[#94A3B8]'],
+              [change.to, 'px-1.5 py-2.5 font-semibold text-[#16A34A]']
+            ];
+            cells.forEach(function (cell) {
+              const td = document.createElement('td');
+              td.className = cell[1];
+              setCellValue(td, cell[0]);
+              row.appendChild(td);
+            });
+            rows.push(row);
+          });
+        });
+        return rows;
+      }
+
+      // 对比表为空时的占位行（跨列显示提示）
+      const MULTI_EMPTY_TEXT = '请勾选要修改的数据项';
+      function buildMultiEmptyRow() {
+        const row = document.createElement('tr');
+        const td = document.createElement('td');
+        td.className = 'px-1.5 py-10 text-center text-xs text-[#94A3B8]';
+        td.setAttribute('colspan', '5');
+        td.textContent = MULTI_EMPTY_TEXT;
+        row.appendChild(td);
+        return row;
+      }
+
+      function renderMultiPending() {
+        renderMultiList(); // 列表结构随当前对象类型（服务单元 / 价卡）重建
+        const selected = getSelectedUnitChanges();
+        const changedCount = selected.filter(function (entry) { return entry.changed; }).length;
+
+        let rows = [];
+        if (selected.length === 0) rows.push(buildMultiEmptyRow()); // 空状态表格：提示勾选
+        else rows = rows.concat(buildMultiCompareRows(selected));
+        renderRowsInto(multiCompareRows, rows);
+
+        if (selected.length > 0 && changedCount === 0) {
+          multiCompareTip.textContent = '所选' + (multiKind === 'pricecard' ? '价卡' : '服务单元') +
+            '的字段值与当前值一致，确认后不会产生新版本。';
+          multiCompareTip.classList.remove('is-collapsed');
+          multiConfirmBtn.disabled = true;
+        } else {
+          multiCompareTip.classList.add('is-collapsed');
+          multiConfirmBtn.disabled = selected.length === 0;
+        }
+        syncUnits();
+      }
+
+      // 结果卡片：每个服务单元一行「字段 原值 → 新值」（与主流程卡片格式一致）
+      // 结果视图：每个对象（服务单元 / 价卡）一张独立卡片，
+      // 卡片由「成功状态条 + 信息栏 + 结果表格」三部分连在一起组成，卡片之间留间距
+      function renderMultiCard(selected) {
+        const changed = selected.filter(function (e) { return e.changed; });
+        const cards = changed.map(function (entry) {
+          const v1 = document.createElement('span');
+          v1.className = 'mr-4';
+          v1.innerHTML = '新版本号：<span class="font-medium text-[#2563EB]">V2</span>';
+          const v2 = document.createElement('span');
+          v2.innerHTML = '变更时间：<span class="text-[#0F172A]">' +
+            (entry.time || '2026-10-13 15:30') + '</span>';
+          return buildMbTable({
+            minWidth: 'min-w-[420px]',
+            rightAlignLast: false,
+            statusBar: true,
+            columns: ['字段', '原值', '新值'],
+            infoLeft: [entry.unit.name, entry.unit.vendor],
+            infoRight: [v1, v2],
+            rows: entry.changes.map(function (change) {
+              return [
+                mbCell(change.field, 'px-3 py-2.5 whitespace-nowrap'),
+                mbCell(change.from, 'px-3 py-2.5 whitespace-nowrap text-[#94A3B8]'),      // 原值灰
+                mbCell(change.to, 'px-3 py-2.5 whitespace-nowrap font-semibold text-[#16A34A]') // 新值绿加粗
+              ];
+            })
+          });
+        });
+        renderRowsInto(multiResultCards, cards);
+      }
+
+      function editUnit(name) {
+        const u = getUnit(name);
+        if (!u) return;
+        UNIT_FIELDS.forEach(function (f) {
+          const next = window.prompt(u.name + ' · ' + f, u.target[f]);
+          if (next !== null && next.trim() !== '') u.target[f] = next.trim();
+        });
+        syncUnits();
+        renderMultiPending();
+      }
+
+      // 进入多服务单元场景：清空勾选、恢复各服务单元的初始值与通知要求的新值
+      function openMultiUnitPanel() {
+        panelMode = 'multi';
+        resetUnits();
+        showPanel();
+        setPanelState('pending');
+      }
+
+      // 多服务单元：用「字段由 原值 调整为 新值」的形式概述；多个服务单元改同一字段时只提一次
+      function describeUnitMigration(selected) {
+        const parts = [];
+        selected.forEach(function (entry) {
+          entry.changes.forEach(function (change) {
+            const text = change.field + '由 ' + change.from + ' 调整为 ' + change.to;
+            if (parts.indexOf(text) === -1) parts.push(text);
+          });
+        });
+        return parts.join('，');
+      }
+
+      function confirmMultiUnits() {
+        const selected = getSelectedUnitChanges();
+        // 两个场景共用 [确认]：都先记一条「用户已确认」，AI 回复按场景不同
+        appendUserMessage('用户已确认');
+        // 部分失败：按规则执行（上海仓成功、深圳仓失败）
+        if (partialArm) {
+          partialArm = false;
+          revertUnitsToScenario(); // 每次从场景基准值开始（可重复）
+          runPartialExecution();
+          return;
+        }
+        // 提交：目标值转为当前值
+        units.forEach(function (u) {
+          u.current = Object.assign({}, u.target);
+          u.selected = false;
+        });
+        renderMultiCard(selected);
+        syncUnits(); // 提交后列表展示最新的当前值
+        setPanelState('result');
+        appendAiMessage('已全部修改成功，具体修改内容请在右侧数据面板查看。');
+        scrollMessagesToBottom();
+      }
+
+      function cancelMultiUnits() {
+        setPanelState('empty');
+        appendUserMessage('用户已取消');
+        appendAiMessage(FLOW_CANCEL_TEXT);
+        scrollMessagesToBottom();
+      }
+
+      // 部分失败场景的取消文案（与多服务单元不同）
+      const PARTIAL_CANCEL_TEXT = '已取消后续操作，已成功的修改已生效，未修改的保持不变。';
+
+      /* ============ 确认后部分成功、部分失败（成功卡片 + 失败卡片 + 重试） ============ */
+      const PARTIAL_FAIL_UNIT = 'DHL-深圳仓';            // 服务单元场景：该服务单元执行失败
+      const PARTIAL_FAIL_PRICE_CARD = 'DHL-深圳仓价卡';   // 价卡场景：该价卡执行失败
+      const PARTIAL_FAIL_REASON = '系统异常，请稍后重试';
+      let partialResults = [];   // [{ name, vendor, kind, status: 'success'|'failed', reason, changes: [{field, from, to}] }]
+      let partialArm = false;    // 部分失败：待用户点击 [确认] 后按失败规则执行
+
+      // 当前场景下「执行失败」的对象名称
+      function partialFailName() {
+        return multiKind === 'pricecard' ? PARTIAL_FAIL_PRICE_CARD : PARTIAL_FAIL_UNIT;
+      }
+
+      // 部分失败的结果卡片：与「成功结果卡片」一致的三段式结构
+      // （状态条 + 信息栏 + 结果表格，三部分连在一起），失败卡片用红色状态条 + 失败原因
+      function buildPartialCard(entry, opts) {
+        const o = opts || {};
+        const failed = entry.status === 'failed';
+        const right = [];
+        if (failed) {
+          const reason = document.createElement('span');
+          reason.innerHTML = '失败原因：<span class="text-[#DC2626]">' + entry.reason + '</span>';
+          right.push(reason);
+        } else {
+          const v1 = document.createElement('span');
+          v1.className = 'mr-4';
+          v1.innerHTML = '新版本号：<span class="font-medium text-[#2563EB]">V2</span>';
+          const v2 = document.createElement('span');
+          v2.innerHTML = '变更时间：<span class="text-[#0F172A]">' +
+            (o.time || '2026-10-13 15:30') + '</span>';
+          right.push(v1);
+          right.push(v2);
+        }
+        return buildMbTable({
+          minWidth: 'min-w-[420px]',
+          rightAlignLast: false,
+          statusBar: failed ? 'failed' : true,
+          columns: ['字段', '原值', '新值'],
+          infoLeft: [entry.name, entry.vendor],
+          infoRight: right,
+          rows: entry.changes.map(function (change) {
+            return [
+              mbCell(change.field, 'px-3 py-2.5 whitespace-nowrap'),
+              mbCell(change.from, 'px-3 py-2.5 whitespace-nowrap text-[#94A3B8]'),        // 原值灰
+              mbCell(change.to, 'px-3 py-2.5 whitespace-nowrap font-semibold text-[#16A34A]') // 新值绿加粗
+            ];
+          })
+        });
+      }
+
+      function renderPartialCards() {
+        const cards = partialResults.map(function (entry) {
+          return buildPartialCard(entry);
+        });
+        renderRowsInto(partialCards, cards);
+      }
+
+      // 展示执行结果（成功的修改即生效、不回滚；失败的等待重试）
+      function showPartialResults(results) {
+        panelMode = 'partial';
+        partialResults = results;
+        // 列表展示服务单元的当前值（执行前的值），执行结果以卡片呈现
+        revertUnitsToScenario();
+        results.forEach(function (entry) {
+          if (entry.status !== 'success') return;
+          const u = getUnit(entry.name);
+          if (u) u.current = Object.assign({}, u.target);
+        });
+        syncUnits();
+        renderPartialCards();
+        showPanel();
+        setPanelState('result');
+      }
+
+      // 重试：仅对失败的服务单元重新执行（为本次成功）
+      // 成功后数据面板只展示本次重试成功的服务单元，避免与之前的成功卡片重复
+      function retryPartial() {
+        const failed = partialResults.filter(function (entry) { return entry.status === 'failed'; });
+        if (failed.length === 0) return;
+
+        // 提交前先快照失败对象的变更（重试后值会变成新值）
+        const entries = failed.map(function (entry) {
+          const u = getUnit(entry.name);
+          return {
+            name: entry.name,
+            vendor: entry.vendor,
+            kind: entry.kind,
+            unit: u,
+            changes: UNIT_FIELDS.map(function (f) {
+              return { field: f, from: u ? u.current[f] : '', to: u ? u.target[f] : '' };
+            })
+          };
+        });
+
+        failed.forEach(function (entry) {
+          const u = getUnit(entry.name);
+          if (u) u.current = Object.assign({}, u.target); // 重试成功：生效
+        });
+        syncUnits();
+
+        partialResults = [];
+        panelMode = 'partial'; // 仍用部分失败面板：只展示本次重试成功的服务单元卡片
+        renderRowsInto(partialCards, entries.map(function (entry) {
+          return buildPartialCard(Object.assign({ status: 'success' }, entry), { time: '2026-10-13 15:35' });
+        }));
+        setPanelState('result'); // 输入框解除禁用
+        appendUserMessage('用户已重试');
+        appendAiMessage('重试成功，具体修改内容请在右侧数据面板查看。');
+        scrollMessagesToBottom();
+      }
+
+      // 取消：已成功的修改保留（不回滚），仅结束后续操作
+      function cancelPartial() {
+        setPanelState('empty');
+        appendUserMessage('用户已取消');
+        appendAiMessage(PARTIAL_CANCEL_TEXT);
+        scrollMessagesToBottom();
+      }
+
+      // 模拟执行：上海仓成功、深圳仓失败（固定规则，便于）
+      function runPartialExecution() {
+        const selected = getSelectedUnitChanges();
+        const failName = partialFailName();
+        const kind = multiKind;
+        const results = selected.map(function (entry) {
+          const failed = entry.unit.name === failName;
+          return {
+            name: entry.unit.name,
+            vendor: entry.unit.vendor,
+            kind: kind,
+            status: failed ? 'failed' : 'success',
+            reason: failed ? PARTIAL_FAIL_REASON : '',
+            changes: entry.changes
+          };
+        });
+        showPartialResults(results);
+
+        const ok = results.filter(function (r) { return r.status === 'success'; });
+        const bad = results.filter(function (r) { return r.status === 'failed'; });
+        // 结果告知：共 N 个（服务单元 / 价卡），M 个成功、K 个失败，明细在数据面板
+        const noun = kind === 'pricecard' ? '价卡' : '服务单元';
+        const prefix = kind === 'pricecard' ? '共 ' : '共 涉及到';
+        appendAiMessage(prefix + results.length + ' 个' + noun + '，' + ok.length + ' 个修改成功，' +
+          bad.length + ' 个修改失败，具体修改内容请在右侧数据面板查看。');
+        scrollMessagesToBottom();
+      }
+
+      // 预置勾选（用）：例如部分失败场景固定勾选上海仓与深圳仓
+      function presetUnits(names) {
+        units.forEach(function (u) { u.selected = names.indexOf(u.name) !== -1; });
+        syncUnits();
+        renderMultiPending();
+      }
+
+      // 场景六：确认后部分成功、部分失败（选择阶段与多服务单元一致）
+      // 场景六：确认后部分成功、部分失败
+      // 选择阶段与「定位到多个服务单元」完全一致：预置勾选上海仓与深圳仓并展示对比，
+      // 之后由用户点击 [确认] 触发执行（上海仓成功、深圳仓失败）
+      function runPartialFailFlow() {
+        forceResetForDemo();
+        setMultiKind('unit'); // 面板承载服务单元
+        applyUnitScenario('partial'); // 本场景使用 2026-10-12 → 2026-10-13
+        resetConversation(); // 先复位（会把面板清空）
+        openMultiUnitPanel(); // 再打开服务单元选择面板并展示对比
+        partialArm = true;    // 用户点击 [确认] 时按「部分成功、部分失败」执行
+        playStory([
+          { type: 'user', text: DHL_NOTIFY_PARTIAL },
+          { type: 'ai', text: MULTI_AI_ASK, unitListRendered: true },
+          { type: 'action', presetUnits: ['DHL-上海仓', 'DHL-深圳仓'], delay: 900 }
+        ]);
+      }
+
+      /* ============ 修改价卡计费（独立场景：组级信息栏 + 计费规则表 + 对比表） ============ */
+      // 底层规则段（编辑弹框逐段编辑）：计费方式、计费要素为下拉，区间与价格可输入。
+      // unit / priceUnit 不在弹框中暴露，仅用于拼装展示文本。
+      const BILLING_RULE_SEGMENTS = [
+        { mode: '首重计费', factor: '实重', from: '0', to: '3', unit: 'KG', price: '15', priceUnit: '' },
+        { mode: '续重计费', factor: '实重', from: '3', to: '', unit: 'KG', price: '1.3455', priceUnit: '/KG' }
+      ];
+      const BILLING_RULE_SEGMENTS_ORIGINAL = [
+        { mode: '首重计费', factor: '实重', from: '0', to: '3', unit: 'KG', price: '12.558', priceUnit: '' },
+        { mode: '续重计费', factor: '实重', from: '3', to: '', unit: 'KG', price: '1.3455', priceUnit: '/KG' }
+      ];
+      // 弹框下拉可选值
+      const RULE_MODES = ['首重计费', '续重计费', '总价计费', '单价计费',
+        '均摊首重计费', '均摊续重计费', '均摊总价计费', '均摊单价计费'];
+      const RULE_FACTORS = ['实重', '体积重', '计费重', '件数'];
+
+      // 单段 → 展示文本：[计费方式] 区间 价格
+      // 有终点：起点-终点单位（如 0-3KG）；无终点：起点单位以上（如 3KG以上）
+      function ruleSegmentText(s) {
+        const mode = String(s.mode || '').replace(/计费$/, ''); // 首重计费 → 首重
+        const unit = s.unit || '';
+        const range = s.to ? (s.from + '-' + s.to + unit) : (s.from + unit + '以上');
+        return '[' + mode + '] ' + range + ' ' + s.price + (s.priceUnit || '');
+      }
+
+      function ruleTextOf(segments) {
+        return (segments || []).map(ruleSegmentText).join('；');
+      }
+
+      function cloneSegments(segments) {
+        return (segments || []).map(function (s) { return Object.assign({}, s); });
+      }
+
+      const BILLING = {
+        vendor: '德邦',
+        serviceUnit: '德邦上门取件',
+        priceCard: '德邦取件价卡',
+        item: '德邦上门取件运费',
+        fromZone: '上海',
+        toZone: '上海',
+        method: '首重计费',
+        factor: '实重（KG）',
+        currency: 'CNY',
+        ruleOriginal: ruleTextOf(BILLING_RULE_SEGMENTS_ORIGINAL),
+        ruleTarget: ruleTextOf(BILLING_RULE_SEGMENTS),
+        condition: '',
+        fuel: '否',
+        note: '',
+        userText: '把德邦上门取件运费，上海到上海的首重价格改成 15 元。',
+        aiText: '已定位到计费规则，请在右侧数据面板确认。',
+        // 未提供价卡（无法确定目标价卡）
+        noCardUserText: '把报关费的价格改成 70 元。',
+        noCardAiText: '未找到匹配的价卡，请检查名称后重新输入。',
+        // 匹配不到对应的计费规则
+        noRuleUserText: '把百运美国空运价卡里，美国 Zone5 的报关费价格改成 70 元。',
+        noRuleAiText: '未找到匹配的计费规则，请补充或更正信息。',
+        // 修改内容不完整
+        incompleteUserText: '改一下百运美国空运价卡里的报关费。',
+        incompleteAiText: '请说明您要修改的内容及修改后的结果。'
+      };
+
+      // 当前计费规则（草稿）；ruleOriginal 为数据库原值，segments 为其底层规则段
+      let billingRule = {
+        rule: BILLING.ruleTarget,
+        ruleOriginal: BILLING.ruleOriginal,
+        segments: cloneSegments(BILLING_RULE_SEGMENTS),
+        condition: BILLING.condition,
+        fuel: BILLING.fuel,
+        note: BILLING.note,
+        selected: true
+      };
+      let billingLastChanges = null; // 结果视图使用的变更快照（提交后原值会被覆盖）
+
+      function resetBilling() {
+        billingRule = {
+          rule: BILLING.ruleTarget,
+          ruleOriginal: BILLING.ruleOriginal,
+          segments: cloneSegments(BILLING_RULE_SEGMENTS),
+          condition: BILLING.condition,
+          fuel: BILLING.fuel,
+          note: BILLING.note,
+          selected: true
+        };
+        billingLastChanges = null;
+        if (billingGroupCheck) billingGroupCheck.checked = true;
+        if (billingEditModal) billingEditModal.classList.add('is-collapsed');
+        if (billingRulesModal) billingRulesModal.classList.add('is-collapsed');
+      }
+
+      // 本次变更（原值 ≠ 新值）
+      function billingChanges() {
+        return [{
+          item: BILLING.item,
+          fromZone: BILLING.fromZone,
+          toZone: BILLING.toZone,
+          method: BILLING.method,
+          factor: BILLING.factor,
+          currency: BILLING.currency,
+          from: billingRule.ruleOriginal,
+          to: billingRule.rule
+        }];
+      }
+
+      // 主表格：收费项目等固定列 + 本次要修改的动态列（计费规则，蓝字）
+      function renderBillingRows() {
+        const row = document.createElement('tr');
+        row.className = 'border-t border-[#E5E7EB]';
+
+        const tdBox = document.createElement('td');
+        tdBox.className = 'px-2 py-2.5';
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.id = 'billingRowCheck';
+        box.checked = billingRule.selected;
+        box.className = 'w-3.5 h-3.5 align-middle accent-[#2563EB] cursor-pointer';
+        box.addEventListener('change', function () {
+          billingRule.selected = box.checked;
+          renderBillingPending();
+        });
+        tdBox.appendChild(box);
+        row.appendChild(tdBox);
+
+        [BILLING.item, BILLING.fromZone, BILLING.toZone, BILLING.currency]
+          .forEach(function (value) {
+            const td = document.createElement('td');
+            td.className = 'px-2 py-2.5 truncate';
+            td.setAttribute('title', value);
+            td.textContent = value;
+            row.appendChild(td);
+          });
+
+        // 动态列：计费规则（本次要修改的字段，蓝字、无背景）
+        const tdRule = document.createElement('td');
+        tdRule.className = 'px-2 py-2.5 font-medium text-[#2563EB]';
+        tdRule.id = 'billingRuleCell';
+        tdRule.setAttribute('title', billingRule.rule);
+        tdRule.textContent = billingRule.rule;
+        row.appendChild(tdRule);
+
+        const tdOp = document.createElement('td');
+        tdOp.className = 'px-2 py-2.5 text-right';
+        const btn = document.createElement('button');
+        btn.id = 'billingEditBtn';
+        btn.className = 'text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer';
+        btn.textContent = '编辑';
+        btn.addEventListener('click', openBillingEdit);
+        tdOp.appendChild(btn);
+        row.appendChild(tdOp);
+        renderRowsInto(billingRows, [row]);
+      }
+
+      // 对比表格：固定列 + 原值（灰）+ 新值（绿加粗），仅展示已勾选的行
+      function buildBillingCompareRows(changes) {
+        if (!billingRule.selected) return [];
+        return changes.map(function (c) {
+          const row = document.createElement('tr');
+          row.className = 'border-t border-[#E5E7EB]';
+          [c.item, c.fromZone, c.toZone, c.currency].forEach(function (value) {
+            const td = document.createElement('td');
+            td.className = 'px-1.5 py-2.5 truncate';
+            td.setAttribute('title', value);
+            td.textContent = value;
+            row.appendChild(td);
+          });
+          const tdFrom = document.createElement('td');
+          tdFrom.className = 'px-1.5 py-2.5 text-[#94A3B8]';
+          tdFrom.textContent = c.from;
+          row.appendChild(tdFrom);
+          const tdTo = document.createElement('td');
+          tdTo.className = 'px-1.5 py-2.5 font-semibold text-[#16A34A]';
+          tdTo.textContent = c.to;
+          row.appendChild(tdTo);
+          return row;
+        });
+      }
+
+      function renderBillingPending() {
+        renderBillingRows();
+        renderRowsInto(billingCompareRows, buildBillingCompareRows(billingChanges()));
+        if (billingGroupCheck) billingGroupCheck.checked = billingRule.selected;
+        if (billingConfirmBtn) billingConfirmBtn.disabled = !billingRule.selected;
+      }
+
+      function renderBillingResult(changes) {
+        const snapshot = changes || billingLastChanges || billingChanges();
+        renderRowsInto(billingResultRows, buildBillingCompareRows(snapshot));
+      }
+
+      // 提交（确认）：原值转为已生效的新值，结果视图使用提交前的快照
+      function confirmBilling() {
+        billingLastChanges = billingChanges();
+        billingRule.ruleOriginal = billingRule.rule;
+        panelMode = 'billing';
+        renderBillingResult(billingLastChanges);
+        setPanelState('result');
+        appendUserMessage('用户已确认');
+        appendAiMessage('修改成功，具体修改内容请在右侧数据面板查看。');
+        scrollMessagesToBottom();
+      }
+
+      function cancelBilling() {
+        setPanelState('empty');
+        appendUserMessage('用户已取消');
+        appendAiMessage(FLOW_CANCEL_TEXT);
+        scrollMessagesToBottom();
+      }
+
+      // 编辑弹框（正常流程）：以表格展示该行的所有底层规则，每个单元格直接可编辑。
+      // 区间：有终点时为「[起点] 到 [终点]」，无终点时为「[起点] 以上」。
+      function renderBillingRuleRows() {
+        const rows = (billingRule.segments || []).map(function (seg) {
+          const tr = document.createElement('tr');
+          tr.className = 'border-t border-[#E5E7EB]';
+
+          const cellCls = 'px-3 py-2';
+          const inputCls = 'h-8 rounded-md border border-[#D0D5DD] px-2 text-xs text-[#0F172A] ' +
+            'focus:outline-none focus:border-[#2563EB]';
+
+          // 计费方式（下拉）
+          const tdMode = document.createElement('td');
+          tdMode.className = cellCls;
+          const selMode = document.createElement('select');
+          selMode.className = inputCls + ' w-full bg-white cursor-pointer';
+          selMode.setAttribute('data-rule-mode', '');
+          RULE_MODES.forEach(function (m) {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            if (m === seg.mode) opt.selected = true;
+            selMode.appendChild(opt);
+          });
+          tdMode.appendChild(selMode);
+          tr.appendChild(tdMode);
+
+          // 计费要素（下拉）
+          const tdFactor = document.createElement('td');
+          tdFactor.className = cellCls;
+          const selFactor = document.createElement('select');
+          selFactor.className = inputCls + ' w-full bg-white cursor-pointer';
+          selFactor.setAttribute('data-rule-factor', '');
+          RULE_FACTORS.forEach(function (f) {
+            const opt = document.createElement('option');
+            opt.value = f;
+            opt.textContent = f;
+            if (f === seg.factor) opt.selected = true;
+            selFactor.appendChild(opt);
+          });
+          tdFactor.appendChild(selFactor);
+          tr.appendChild(tdFactor);
+
+          // 区间：[起点] 到 [终点] / [起点] 以上
+          const tdRange = document.createElement('td');
+          tdRange.className = cellCls + ' whitespace-nowrap';
+          const from = document.createElement('input');
+          from.type = 'text';
+          from.value = seg.from;
+          from.className = inputCls + ' inline-block w-16 text-center';
+          from.setAttribute('data-rule-from', '');
+          tdRange.appendChild(from);
+          if (seg.to) {
+            const mid = document.createElement('span');
+            mid.className = 'mx-1.5 text-[#475569]';
+            mid.textContent = '到';
+            const to = document.createElement('input');
+            to.type = 'text';
+            to.value = seg.to;
+            to.className = inputCls + ' inline-block w-16 text-center';
+            to.setAttribute('data-rule-to', '');
+            tdRange.appendChild(mid);
+            tdRange.appendChild(to);
+          } else {
+            const tail = document.createElement('span');
+            tail.className = 'ml-1.5 text-[#475569]';
+            tail.textContent = '以上';
+            tdRange.appendChild(tail);
+          }
+          tr.appendChild(tdRange);
+
+          // 价格
+          const tdPrice = document.createElement('td');
+          tdPrice.className = cellCls;
+          const price = document.createElement('input');
+          price.type = 'text';
+          price.value = seg.price;
+          price.className = inputCls + ' w-full';
+          price.setAttribute('data-rule-price', '');
+          tdPrice.appendChild(price);
+          tr.appendChild(tdPrice);
+
+          return tr;
+        });
+        renderRowsInto(billingRuleRows, rows);
+      }
+
+      function openBillingEdit() {
+        if (!billingRulesModal) return;
+        renderBillingRuleRows();
+        billingRulesModal.classList.remove('is-collapsed');
+      }
+
+      function closeBillingEdit() {
+        if (billingRulesModal) billingRulesModal.classList.add('is-collapsed');
+      }
+
+      // 保存：一次性提交所有单元格修改，关闭弹框并按新段落重新拼装展示文本
+      function saveBillingEdit() {
+        const trs = billingRuleRows ? billingRuleRows.querySelectorAll('tr') : [];
+        const segments = [];
+        for (let i = 0; i < trs.length; i++) {
+          const tr = trs[i];
+          const prev = (billingRule.segments || [])[i] || {};
+          const toEl = tr.querySelector('[data-rule-to]');
+          segments.push({
+            mode: tr.querySelector('[data-rule-mode]').value,
+            factor: tr.querySelector('[data-rule-factor]').value,
+            from: tr.querySelector('[data-rule-from]').value,
+            to: toEl ? toEl.value : '',
+            price: tr.querySelector('[data-rule-price]').value,
+            unit: prev.unit || '',           // 单位不在弹框中编辑
+            priceUnit: prev.priceUnit || ''
+          });
+        }
+        if (segments.length) billingRule.segments = segments;
+        billingRule.rule = ruleTextOf(billingRule.segments);
+        closeBillingEdit();
+        renderBillingPending();
+      }
+
+      /* ---- 多价卡多计费的编辑弹框（沿用表单式，与正常流程互不影响） ---- */
+      function closeMbBillingEdit() {
+        mbEditRule = null;
+        if (billingEditModal) billingEditModal.classList.add('is-collapsed');
+      }
+
+      function saveMbBillingEdit() {
+        if (!mbEditRule) { closeMbBillingEdit(); return; }
+        mbEditRule.rule = billingEditRule.value;
+        mbEditRule.condition = billingEditCondition.value;
+        mbEditRule.fuel = billingEditFuel.value;
+        mbEditRule.note = billingEditNote.value;
+        closeMbBillingEdit();
+        renderMultiBillingPending();
+      }
+
+      /* ============ 多价卡多计费（按价卡分组的计费规则批量修改） ============ */
+      const MB_USER_TEXT = 'DHL 通知：所有报关费价格改为 70 元。';
+      const MB_AI_TEXT = '找到 3 个匹配的成本价卡，请在右侧选择要修改的内容。';
+      const MB_CONFIRM_TEXT = '已全部修改成功，具体修改内容请在右侧数据面板查看。';
+      const MB_COLUMNS = ['', '收费项目', '起点分区', '终点分区', '币别', '计费规则', '操作'];
+      const MB_COMPARE_COLUMNS = ['收费项目', '起点分区', '终点分区', '币别', '原值', '新值'];
+      const MB_RULE_DEFS = [
+        { toZone: 'LAX、ORD', method: '首重', rule: '[首重] 0-5个 70', original: '[首重] 0-5个 65' },
+        { toZone: 'JFK、SFO', method: '首重', rule: '[首重] 0-5个 70', original: '[首重] 0-5个 75' },
+        { toZone: '美国', method: '续重', rule: '[续重] 6个以上 70', original: '[续重] 6个以上 3' }
+      ];
+      const MB_GROUP_DEFS = [
+        { unit: 'DHL-上海仓', card: 'DHL-上海仓价卡' },
+        { unit: 'DHL-深圳仓', card: 'DHL-深圳仓价卡' },
+        { unit: 'DHL-香港仓', card: 'DHL-香港仓价卡' }
+      ];
+
+      let mbGroups = [];
+      let mbResultSnapshot = [];
+      let mbEditRule = null; // 非空时表示编辑弹框作用于多价卡多计费的某条规则
+      let mbPartialArm = false;       // 部分失败：待用户点击 [确认] 后按失败规则执行
+      let mbPartialState = false;     // 结果面板当前是否为「部分成功、部分失败」卡片
+      let mbPartialResults = [];      // [{ vendor, unit, card, status, reason, rules: [{..., from, to}] }]
+      const MB_PARTIAL_FAIL_UNIT = 'DHL-深圳仓'; // ：该价卡执行失败
+
+      function resetMultiBilling() {
+        mbGroups = MB_GROUP_DEFS.map(function (g, gi) {
+          return {
+            vendor: 'DHL',
+            unit: g.unit,
+            card: g.card,
+            rules: MB_RULE_DEFS.map(function (r) {
+              return {
+                item: '报关费',
+                fromZone: '全部国家',
+                toZone: r.toZone,
+                method: r.method,
+                factor: '个',
+                currency: 'USD',
+                rule: r.rule,
+                ruleOriginal: r.original,
+                condition: '',
+                fuel: '否',
+                note: '',
+                selected: gi === 0 // 分组一默认全选，其余未勾选
+              };
+            })
+          };
+        });
+        mbResultSnapshot = [];
+        mbEditRule = null;
+        mbPartialArm = false;
+        mbPartialState = false;
+        mbPartialResults = [];
+        if (billingEditModal) billingEditModal.classList.add('is-collapsed');
+      }
+
+      // 仍存在失败项（用于保持输入框禁用与展示 [取消][重试]）
+      function mbHasFailed() {
+        return mbPartialResults.some(function (r) { return r.status === 'failed'; });
+      }
+
+      function mbSelectedCount() {
+        let n = 0;
+        mbGroups.forEach(function (g) { g.rules.forEach(function (r) { if (r.selected) n++; }); });
+        return n;
+      }
+
+      // 一个「信息栏（+可选成功状态条）与表头、数据行连在一起」的表格
+      // cfg: { minWidth, statusBar, columns, infoLeft, infoRight, headerCheckbox, rows }
+      function buildMbTable(cfg) {
+        const wrap = document.createElement('div');
+        wrap.className = 'overflow-x-auto rounded-lg border border-[#E5E7EB]';
+        const table = document.createElement('table');
+        table.className = 'w-full ' + (cfg.minWidth || 'min-w-[1020px]') + ' border-collapse text-left text-xs';
+        const thead = document.createElement('thead');
+        const span = String(cfg.columns.length);
+
+        if (cfg.statusBar) {
+          const ok = cfg.statusBar !== 'failed';
+          const tr = document.createElement('tr');
+          tr.className = (ok ? 'bg-[#ECFDF3]' : 'bg-[#FEF2F2]') + ' border-b border-[#E5E7EB]';
+          const th = document.createElement('th');
+          th.setAttribute('colspan', span);
+          th.className = 'px-3 py-2.5 text-left font-normal';
+          const line = document.createElement('div');
+          line.className = 'flex items-center gap-2';
+          const badge = document.createElement('span');
+          badge.className = 'w-5 h-5 rounded-full ' + (ok ? 'bg-[#16A34A]' : 'bg-[#DC2626]') +
+            ' flex items-center justify-center shrink-0';
+          badge.innerHTML = ok
+            ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>'
+            : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg>';
+          const label = document.createElement('span');
+          label.className = 'text-sm font-semibold text-[#0F172A]';
+          label.textContent = ok ? '修改成功' : '修改失败';
+          line.appendChild(badge);
+          line.appendChild(label);
+          th.appendChild(line);
+          tr.appendChild(th);
+          thead.appendChild(tr);
+        }
+
+        // 组级信息栏
+        const trInfo = document.createElement('tr');
+        trInfo.className = 'bg-[#F5F6F8] border-b border-[#E5E7EB]';
+        const thInfo = document.createElement('th');
+        thInfo.setAttribute('colspan', span);
+        thInfo.className = 'px-3 py-2.5 text-left';
+        const inner = document.createElement('div');
+        inner.className = 'flex items-center justify-between gap-4';
+        const left = document.createElement('div');
+        left.className = 'flex items-center gap-2 font-semibold text-[#0F172A]';
+        cfg.infoLeft.forEach(function (txt, i) {
+          if (i > 0) {
+            const sep = document.createElement('span');
+            sep.className = 'text-[#94A3B8]';
+            sep.textContent = '|';
+            left.appendChild(sep);
+          }
+          const s = document.createElement('span');
+          s.textContent = txt;
+          left.appendChild(s);
+        });
+        inner.appendChild(left);
+        if (cfg.infoRight) {
+          const right = document.createElement('div');
+          right.className = 'font-normal text-[#475569] whitespace-nowrap';
+          cfg.infoRight.forEach(function (node) { right.appendChild(node); });
+          inner.appendChild(right);
+        }
+        thInfo.appendChild(inner);
+        trInfo.appendChild(thInfo);
+        thead.appendChild(trInfo);
+
+        // 列头：第一列为组级勾选框（不再显示「选择」字样）
+        const trCols = document.createElement('tr');
+        trCols.className = 'bg-[#F5F6F8] text-[#475569]';
+        cfg.columns.forEach(function (label, i) {
+          const th = document.createElement('th');
+          th.className = 'px-2 py-2 font-medium' + (i === 0 && cfg.headerCheckbox ? ' w-9' : '') +
+            (i === cfg.columns.length - 1 && cfg.rightAlignLast !== false ? ' text-right' : '');
+          if (i === 0 && cfg.headerCheckbox) {
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.className = 'w-3.5 h-3.5 align-middle accent-[#2563EB] cursor-pointer';
+            box.checked = !!cfg.headerCheckbox.checked;
+            box.indeterminate = !!cfg.headerCheckbox.indeterminate; // 组级半选
+            box.title = '全选';
+            box.addEventListener('change', function () { cfg.headerCheckbox.onChange(box.checked); });
+            th.appendChild(box);
+          } else {
+            th.textContent = label;
+          }
+          trCols.appendChild(th);
+        });
+        thead.appendChild(trCols);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        tbody.className = 'text-[#0F172A]';
+        cfg.rows.forEach(function (cells) {
+          const tr = document.createElement('tr');
+          tr.className = 'border-t border-[#E5E7EB]';
+          cells.forEach(function (cell) { tr.appendChild(cell); });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        wrap.appendChild(table);
+        return wrap;
+      }
+
+      function mbCell(text, cls, title) {
+        const td = document.createElement('td');
+        td.className = cls;
+        if (title) td.setAttribute('title', title);
+        td.textContent = text;
+        return td;
+      }
+
+      function mbFixedCells(r, cls) {
+        return [r.item, r.fromZone, r.toZone, r.currency].map(function (v) {
+          return mbCell(v, cls, v);
+        });
+      }
+
+      // 待确认：按价卡分组的规则表 + 分组对比表
+      function renderMultiBillingPending() {
+        const nodes = mbGroups.map(function (g) {
+          const rows = g.rules.map(function (r) {
+            const cells = [];
+            const tdBox = document.createElement('td');
+            tdBox.className = 'px-2 py-2.5';
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.className = 'w-3.5 h-3.5 align-middle accent-[#2563EB] cursor-pointer';
+            box.checked = r.selected;
+            box.addEventListener('change', function () {
+              r.selected = box.checked;
+              renderMultiBillingPending();
+            });
+            tdBox.appendChild(box);
+            cells.push(tdBox);
+            mbFixedCells(r, 'px-2 py-2.5 truncate').forEach(function (td) { cells.push(td); });
+            cells.push(mbCell(r.rule, 'px-2 py-2.5 font-medium text-[#2563EB]', r.rule)); // 动态列：蓝字
+            const tdOp = document.createElement('td');
+            tdOp.className = 'px-2 py-2.5 text-right';
+            const btn = document.createElement('button');
+            btn.className = 'text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer';
+            btn.textContent = '编辑';
+            btn.addEventListener('click', function () { openMbEdit(r); });
+            tdOp.appendChild(btn);
+            cells.push(tdOp);
+            return cells;
+          });
+          const allSel = g.rules.every(function (r) { return r.selected; });
+          const someSel = g.rules.some(function (r) { return r.selected; });
+          return buildMbTable({
+            minWidth: 'min-w-[880px]',
+            columns: MB_COLUMNS,
+            infoLeft: [g.vendor, g.unit, g.card],
+            headerCheckbox: { // 组级勾选框位于表格第一列（替代「选择」表头文字）
+              checked: allSel,
+              indeterminate: someSel && !allSel,
+              onChange: function (checked) {
+                g.rules.forEach(function (r) { r.selected = checked; });
+                renderMultiBillingPending();
+              }
+            },
+            rows: rows
+          });
+        });
+        renderRowsInto(mbGroupsEl, nodes);
+
+        // 对比表：按价卡分组，只展示已勾选规则
+        const compareNodes = [];
+        mbGroups.forEach(function (g) {
+          const sel = g.rules.filter(function (r) { return r.selected; });
+          if (sel.length === 0) return;
+          compareNodes.push(buildMbTable({
+            minWidth: 'min-w-[760px]',
+            columns: MB_COMPARE_COLUMNS,
+            infoLeft: [g.vendor, g.unit, g.card],
+            rows: sel.map(function (r) {
+              const cells = mbFixedCells(r, 'px-1.5 py-2.5 truncate');
+              cells.push(mbCell(r.ruleOriginal, 'px-1.5 py-2.5 text-[#94A3B8]'));         // 原值灰
+              cells.push(mbCell(r.rule, 'px-1.5 py-2.5 font-semibold text-[#16A34A]'));    // 新值绿加粗
+              return cells;
+            })
+          }));
+        });
+        renderRowsInto(mbCompareGroupsEl, compareNodes);
+
+        if (mbConfirmBtn) mbConfirmBtn.disabled = mbSelectedCount() === 0;
+      }
+
+      // 结果视图：按价卡分组，每组为 成功状态条 + 信息栏 + 结果表格
+      function renderMultiBillingResult() {
+        const nodes = mbResultSnapshot.map(function (g) {
+          const v1 = document.createElement('span');
+          v1.className = 'mr-4';
+          v1.innerHTML = '新版本号：<span class="font-medium text-[#2563EB]">V2</span>';
+          const v2 = document.createElement('span');
+          v2.innerHTML = '变更时间：<span class="text-[#0F172A]">' + (g.time || '2026-10-13 15:30') + '</span>';
+          return buildMbTable({
+            minWidth: 'min-w-[760px]',
+            statusBar: true,
+            columns: MB_COMPARE_COLUMNS,
+            infoLeft: [g.vendor, g.unit, g.card],
+            infoRight: [v1, v2],
+            rows: g.rules.map(function (r) {
+              const cells = mbFixedCells(r, 'px-1.5 py-2.5 truncate');
+              cells.push(mbCell(r.from, 'px-1.5 py-2.5 text-[#94A3B8]'));
+              cells.push(mbCell(r.to, 'px-1.5 py-2.5 font-semibold text-[#16A34A]'));
+              return cells;
+            })
+          });
+        });
+        renderRowsInto(mbResultGroupsEl, nodes);
+      }
+
+      // 执行结果：按价卡分别展示成功卡片 / 失败卡片（各自为 状态条 + 信息栏 + 结果表格）
+      function renderMultiBillingPartial() {
+        const nodes = mbPartialResults.map(function (res) {
+          const ok = res.status === 'success';
+          const right = [];
+          if (ok) {
+            const v1 = document.createElement('span');
+            v1.className = 'mr-4';
+            v1.innerHTML = '新版本号：<span class="font-medium text-[#2563EB]">V2</span>';
+            const v2 = document.createElement('span');
+            v2.innerHTML = '变更时间：<span class="text-[#0F172A]">' + (res.time || '2026-10-13 15:30') + '</span>';
+            right.push(v1, v2);
+          } else {
+            const r1 = document.createElement('span');
+            r1.innerHTML = '失败原因：<span class="text-[#DC2626]">' + res.reason + '</span>';
+            right.push(r1);
+          }
+          return buildMbTable({
+            minWidth: 'min-w-[760px]',
+            statusBar: ok ? true : 'failed',
+            columns: MB_COMPARE_COLUMNS,
+            infoLeft: [res.vendor, res.unit, res.card],
+            infoRight: right,
+            rows: res.rules.map(function (r) {
+              const cells = mbFixedCells(r, 'px-1.5 py-2.5 truncate');
+              cells.push(mbCell(r.from, 'px-1.5 py-2.5 text-[#94A3B8]'));
+              cells.push(mbCell(r.to, 'px-1.5 py-2.5 font-semibold text-[#16A34A]'));
+              return cells;
+            })
+          });
+        });
+        renderRowsInto(mbPartialGroups, nodes);
+      }
+
+      // 编辑弹框：作用于某条计费规则
+      function openMbEdit(rule) {
+        if (!billingEditModal) return;
+        mbEditRule = rule;
+        if (billingEditRule) billingEditRule.value = rule.rule;
+        if (billingEditCondition) billingEditCondition.value = rule.condition || '';
+        if (billingEditFuel) billingEditFuel.value = rule.fuel || '否';
+        if (billingEditNote) billingEditNote.value = rule.note || '';
+        billingEditModal.classList.remove('is-collapsed');
+      }
+
+      function confirmMultiBilling() {
+        // 部分失败：按规则执行（上海仓价卡成功、深圳仓价卡失败）
+        if (mbPartialArm) {
+          mbPartialArm = false;
+          confirmMultiBillingPartial();
+          return;
+        }
+        // 提交前快照（结果视图展示原值 → 新值）
+        mbResultSnapshot = mbGroups.map(function (g) {
+          return {
+            vendor: g.vendor,
+            unit: g.unit,
+            card: g.card,
+            rules: g.rules.filter(function (r) { return r.selected; }).map(function (r) {
+              return {
+                item: r.item, fromZone: r.fromZone, toZone: r.toZone,
+                method: r.method, factor: r.factor, currency: r.currency,
+                from: r.ruleOriginal, to: r.rule
+              };
+            })
+          };
+        }).filter(function (g) { return g.rules.length > 0; });
+        // 提交：原值 = 新值
+        mbGroups.forEach(function (g) {
+          g.rules.forEach(function (r) { r.ruleOriginal = r.rule; });
+        });
+        panelMode = 'multibilling';
+        renderMultiBillingResult();
+        setPanelState('result');
+        appendUserMessage('用户已确认');
+        appendAiMessage(MB_CONFIRM_TEXT);
+        scrollMessagesToBottom();
+      }
+
+      function cancelMultiBilling() {
+        setPanelState('empty');
+        appendUserMessage('用户已取消');
+        appendAiMessage(FLOW_CANCEL_TEXT);
+        scrollMessagesToBottom();
+      }
+
+      // 部分成功、部分失败：上海仓价卡成功、深圳仓价卡失败
+      function confirmMultiBillingPartial() {
+        const results = mbGroups.filter(function (g) {
+          return g.rules.some(function (r) { return r.selected; });
+        }).map(function (g) {
+          const failed = g.unit === MB_PARTIAL_FAIL_UNIT;
+          return {
+            vendor: g.vendor,
+            unit: g.unit,
+            card: g.card,
+            status: failed ? 'failed' : 'success',
+            reason: failed ? PARTIAL_FAIL_REASON : '',
+            time: '2026-10-13 15:30',
+            rules: g.rules.filter(function (r) { return r.selected; }).map(function (r) {
+              return {
+                item: r.item, fromZone: r.fromZone, toZone: r.toZone,
+                method: r.method, factor: r.factor, currency: r.currency,
+                from: r.ruleOriginal, to: r.rule
+              };
+            })
+          };
+        });
+        // 提交：成功的价卡原值 = 新值；失败的保持不变
+        results.forEach(function (res) {
+          if (res.status !== 'success') return;
+          const g = mbGroups.filter(function (x) { return x.unit === res.unit; })[0];
+          if (g) g.rules.forEach(function (r) { if (r.selected) r.ruleOriginal = r.rule; });
+        });
+        mbPartialResults = results;
+        mbPartialState = true;
+        panelMode = 'multibilling';
+        renderMultiBillingPartial();
+        setPanelState('result');
+        appendUserMessage('用户已确认');
+        const okCount = results.filter(function (r) { return r.status === 'success'; }).length;
+        const badCount = results.filter(function (r) { return r.status === 'failed'; }).length;
+        appendAiMessage('共 ' + results.length + ' 个成本价卡，' + okCount + ' 个修改成功，' +
+          badCount + ' 个修改失败，具体修改内容请在右侧数据面板查看。');
+        scrollMessagesToBottom();
+      }
+
+      // 重试：仅对失败的价卡重新执行（为本次成功），只展示本次重试成功的价卡
+      function retryMultiBillingPartial() {
+        const failed = mbPartialResults.filter(function (r) { return r.status === 'failed'; });
+        if (failed.length === 0) return;
+        const snapshot = failed.map(function (res) {
+          return {
+            vendor: res.vendor, unit: res.unit, card: res.card,
+            time: '2026-10-13 15:35',
+            rules: res.rules.map(function (r) { return Object.assign({}, r); })
+          };
+        });
+        failed.forEach(function (res) {
+          const g = mbGroups.filter(function (x) { return x.unit === res.unit; })[0];
+          if (g) g.rules.forEach(function (r) { if (r.selected) r.ruleOriginal = r.rule; });
+        });
+        mbPartialResults = [];
+        mbPartialState = false;
+        mbResultSnapshot = snapshot;
+        panelMode = 'multibilling';
+        renderMultiBillingResult();
+        setPanelState('result');
+        appendUserMessage('用户已重试');
+        appendAiMessage('重试成功，具体修改内容请在右侧数据面板查看。');
+        scrollMessagesToBottom();
+      }
+
+      // 取消：已成功的修改不回滚，仅结束后续操作
+      function cancelMultiBillingPartial() {
+        setPanelState('empty');
+        appendUserMessage('用户已取消');
+        appendAiMessage(PARTIAL_CANCEL_TEXT);
+        scrollMessagesToBottom();
+      }
+
+      // 场景：多价卡多计费 · 确认后部分成功、部分失败
+      function runMultiBillingPartialFlow() {
+        forceResetForDemo();
+        resetMultiBilling();
+        panelMode = 'multibilling';
+        resetConversation(); // 会复位分组与勾选
+        // 复位后预置勾选：分组一（上海仓价卡）与分组二（深圳仓价卡）
+        mbGroups[0].rules.forEach(function (r) { r.selected = true; });
+        mbGroups[1].rules.forEach(function (r) { r.selected = true; });
+        mbPartialArm = true; // 点击 [确认] 时按「部分成功、部分失败」执行
+        playStory([
+          { type: 'user', text: MB_USER_TEXT },
+          { type: 'ai', text: MB_AI_TEXT, panel: 'pending', disableInput: true }
+        ]);
+      }
+
+      // 场景：多价卡多计费（按价卡分组批量修改计费规则）
+      function runMultiBillingFlow() {
+        forceResetForDemo();
+        resetMultiBilling();
+        panelMode = 'multibilling';
+        resetConversation();
+        playStory([
+          { type: 'user', text: MB_USER_TEXT },
+          { type: 'ai', text: MB_AI_TEXT, panel: 'pending', disableInput: true }
+        ]);
+      }
+
+      /* ============ 文件解析建档（服务单元列表 + 选中行解析详情） ============ */
+      const FILE_UPLOAD_TEXT = '上传文件：服务单元报价表.xlsx';
+      const FILE_PARSING_TEXT = '正在解析文件，请稍候。';
+      const FILE_PARSED_TEXT = '解析完成，请查看右侧数据面板。';
+      const FILE_ALL_DONE_TEXT = '全部服务单元已处理完成，可进入入库流程。';
+      const FILE_PARSE_MS = 900;
+
+      const FILE_UNIT_DEFS = [
+        { name: '美国空运', parse: '解析成功', match: '匹配成功', handle: '待更新', action: 'confirm' },
+        { name: '美国海运', parse: '解析失败', match: '—', handle: '—', action: 'reparse' },
+        { name: '欧洲空运', parse: '解析成功', match: '匹配成功', handle: '待更新', action: 'confirm' },
+        { name: '美国空派', parse: '解析成功', match: '匹配失败', handle: '待新增', action: 'confirm' }
+      ];
+
+      // 服务单元 / 成本价卡（横向表）与价卡计费模板
+      const FILE_UNIT_COLS = ['服务单元名称', '服务商名称', '覆盖范围', '履约抛比', 'KG/CBM', '每日负载容量',
+        '服务时间', '接单时间', '截单时间', '货物准入类型', '备注'];
+      const FILE_CARD_COLS = ['价卡类型', '绑定服务单元', '价卡名称', '生效开始时间', '生效结束时间'];
+      const FILE_FEE_COLS = ['费用项', '起点分区', '终点分区', '均摊计费要素', '币种',
+        '是否计算燃油', '计费规则', '步长', '条件表达式', '备注'];
+      const FILE_FEE_ROWS = [
+        ['报关费', '全部国家', 'LAX、ORD', '—', 'USD', '否', '[首重] 0-5个 65', '1', '', ''],
+        ['报关费', '全部国家', 'JFK、SFO', '—', 'USD', '否', '[首重] 0-5个 75', '1', '', ''],
+        ['报关加收费', '全部国家', '美国', '—', 'USD', '否', '[续重] 6个以上 3', '1', '', '']
+      ];
+
+      let fileUnits = [];
+      let fileSelected = 0;
+      let fileAllDone = false;
+      let filePendingTip = '';    // 待确认计费校验不通过时的提示
+      let filePendingPage = 1;    // 待确认计费表分页
+      let fileFeePage = 1;        // 价卡计费表分页
+      const FILE_PAGE_SIZE = 2;
+      const FILE_REQUIRED_IDX = [6, 7]; // 必填字段：计费规则、步长
+      const FILE_PROBLEM_RULE = 6;      // 问题字段：计费规则
+      const FILE_PROBLEM_STEP = 7;      // 问题字段：步长
+
+      function resetFileUnits() {
+        fileUnits = FILE_UNIT_DEFS.map(function (d) {
+          const u = Object.assign({}, d);
+          u.detail = buildFileDetail(u);
+          u.pending = buildFilePendingRows(u);
+          return u;
+        });
+        fileSelected = 0;
+        fileAllDone = false;
+        filePendingTip = '';
+        filePendingPage = 1;
+        fileFeePage = 1;
+      }
+
+      // 该服务单元的「待确认计费」：只含存在问题的计费规则（行值与问题字段下标）
+      function buildFilePendingRows(u) {
+        if (u.parse === '解析失败') return [];
+        if (u.name === '美国空运') {
+          return [
+            { values: ['报关费', '全部国家', 'LAX、ORD', '—', 'USD', '否', '[首重] 0-5个 65', '1', '', ''], problems: [FILE_PROBLEM_RULE] },
+            { values: ['报关费', '全部国家', 'JFK、SFO', '—', 'USD', '否', '[首重] 0-5个 75', '', '', ''], problems: [FILE_PROBLEM_STEP] }
+          ];
+        }
+        if (u.name === '美国空派') {
+          return [
+            { values: ['报关费', '全部国家', 'LAX、ORD', '—', 'USD', '否', '[首重] 0-5个 65', '', '', ''], problems: [FILE_PROBLEM_STEP] }
+          ];
+        }
+        return [];
+      }
+
+      // 某服务单元的解析详情（各服务单元持有各自的副本，可独立编辑）
+      function buildFileDetail(u) {
+        const unitName = 'KLS中技物流-' + u.name;
+        return {
+          unit: [unitName, 'KLS中技物流', '干线运输', '5000', '200', '3000', '周一至周五 09:00-18:00',
+            '09:00', '18:00', '普货、带电', '—'],
+          card: ['静态价卡', unitName, '百运' + u.name + '价卡', '2026-10-09 00:00:00', '2027-10-09 00:00:00'],
+          fees: FILE_FEE_ROWS.map(function (r) { return r.slice(); })
+        };
+      }
+
+      function fileCell(text, cls) {
+        const td = document.createElement('td');
+        td.className = cls;
+        td.textContent = text;
+        return td;
+      }
+
+      // 操作列里的 [编辑]（蓝色纯文本，：点击暂无交互）
+      function fileEditButton() {
+        const btn = document.createElement('button');
+        btn.className = 'text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer whitespace-nowrap';
+        btn.textContent = '编辑';
+        return btn;
+      }
+
+      // 分页控件
+      function buildFilePager(total, page, onPage) {
+        const pages = Math.max(1, Math.ceil(total / FILE_PAGE_SIZE));
+        const wrap = document.createElement('div');
+        wrap.className = 'mt-2 flex items-center justify-end gap-3 text-[11px] text-[#475569]';
+        const info = document.createElement('span');
+        info.textContent = '共 ' + total + ' 条，第 ' + page + '/' + pages + ' 页';
+        const prev = document.createElement('button');
+        prev.className = page <= 1 ? 'text-[#CBD5E1] cursor-default' : 'text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer';
+        prev.textContent = '上一页';
+        if (page > 1) prev.addEventListener('click', function () { onPage(page - 1); });
+        const next = document.createElement('button');
+        next.className = page >= pages ? 'text-[#CBD5E1] cursor-default' : 'text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer';
+        next.textContent = '下一页';
+        if (page < pages) next.addEventListener('click', function () { onPage(page + 1); });
+        wrap.appendChild(info);
+        wrap.appendChild(prev);
+        wrap.appendChild(next);
+        return wrap;
+      }
+
+      // 待确认计费：只展示有问题的计费规则；问题字段黄底；操作列为 [编辑] [确认]；支持分页
+      function buildFilePendingTable() {
+        const u = fileUnits[fileSelected];
+        const rows = (u && u.pending) || [];
+        const wrap = document.createElement('div');
+        const cap = document.createElement('div');
+        cap.className = 'text-xs font-medium text-[#475569]';
+        cap.textContent = '待确认计费';
+        wrap.appendChild(cap);
+
+        if (rows.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'mt-2 rounded-lg border border-[#E5E7EB] bg-[#F8FAFC] px-4 py-6 text-center text-xs text-[#94A3B8]';
+          empty.textContent = '暂无待确认数据';
+          wrap.appendChild(empty);
+          return wrap;
+        }
+
+        const pages = Math.max(1, Math.ceil(rows.length / FILE_PAGE_SIZE));
+        const page = Math.min(filePendingPage, pages);
+        const start = (page - 1) * FILE_PAGE_SIZE;
+        const pageRows = rows.slice(start, start + FILE_PAGE_SIZE);
+
+        const box = document.createElement('div');
+        box.className = 'mt-2 overflow-x-auto rounded-lg border border-[#E5E7EB]';
+        const table = document.createElement('table');
+        table.className = 'w-full border-collapse text-left text-xs';
+
+        const thead = document.createElement('thead');
+        thead.className = 'bg-[#F5F6F8] text-[#475569]';
+        const trh = document.createElement('tr');
+        FILE_FEE_COLS.forEach(function (c, ci) {
+          const th = document.createElement('th');
+          th.className = 'px-3 py-2 font-medium whitespace-nowrap';
+          th.textContent = c;
+          trh.appendChild(th);
+        });
+        const thOp = document.createElement('th');
+        thOp.className = 'px-3 py-2 font-medium text-right whitespace-nowrap';
+        thOp.textContent = '操作';
+        trh.appendChild(thOp);
+        thead.appendChild(trh);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        tbody.className = 'text-[#0F172A]';
+        pageRows.forEach(function (row, i) {
+          const tr = document.createElement('tr');
+          tr.className = 'border-t border-[#E5E7EB]';
+          row.values.forEach(function (v, ci) {
+            // 不确定的文字标黄（仅文字颜色，无底色）
+            const isProblem = (row.problems || []).indexOf(ci) !== -1;
+            tr.appendChild(fileCell(v, 'px-3 py-2.5 whitespace-nowrap' +
+              (isProblem ? ' font-medium text-[#EAB308]' : '')));
+          });
+          const tdOp = document.createElement('td');
+          tdOp.className = 'px-3 py-2.5 text-right whitespace-nowrap';
+          const edit = fileEditButton(); // 与其他表一致：点击暂无交互
+          const ok = document.createElement('button');
+          ok.className = 'ml-3 text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer whitespace-nowrap';
+          ok.textContent = '确认';
+          ok.addEventListener('click', function () { confirmFilePendingRow(start + i); });
+          tdOp.appendChild(edit);
+          tdOp.appendChild(ok);
+          tr.appendChild(tdOp);
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        box.appendChild(table);
+        wrap.appendChild(box);
+
+        if (filePendingTip) {
+          const tip = document.createElement('div');
+          tip.className = 'mt-2 text-[11px] leading-4 text-[#DC2626]';
+          tip.textContent = filePendingTip;
+          wrap.appendChild(tip);
+        }
+        wrap.appendChild(buildFilePager(rows.length, page, function (p) {
+          filePendingPage = p;
+          filePendingTip = '';
+          renderFilePending();
+        }));
+        return wrap;
+      }
+
+      // 确认一条待确认计费：校验必填字段（计费规则、步长）
+      function confirmFilePendingRow(index) {
+        const u = fileUnits[fileSelected];
+        if (!u || !u.pending || !u.pending[index]) return;
+        const row = u.pending[index];
+        const missing = FILE_REQUIRED_IDX.some(function (i) {
+          return !String(row.values[i] == null ? '' : row.values[i]).trim();
+        });
+        if (missing) {
+          filePendingTip = '请先补充必填字段'; // 该条保留
+          renderFilePending();
+          return;
+        }
+        u.pending.splice(index, 1); // 通过：从待确认表移除（价卡计费表中仍在）
+        filePendingTip = '';
+        const pages = Math.max(1, Math.ceil(u.pending.length / FILE_PAGE_SIZE));
+        filePendingPage = Math.min(filePendingPage, pages);
+        renderFilePending();
+      }
+
+      // 横向表：字段作为列头，值作为一行；末尾为「操作」列（固定在最右侧）
+      function buildFileHTable(title, cols, values) {
+        const wrap = document.createElement('div');
+        const cap = document.createElement('div');
+        cap.className = 'text-xs font-medium text-[#475569]';
+        cap.textContent = title;
+        wrap.appendChild(cap);
+
+        const box = document.createElement('div');
+        box.className = 'mt-2 overflow-x-auto rounded-lg border border-[#E5E7EB]';
+        const table = document.createElement('table');
+        table.className = 'w-full border-collapse text-left text-xs';
+
+        const thead = document.createElement('thead');
+        thead.className = 'bg-[#F5F6F8] text-[#475569]';
+        const trh = document.createElement('tr');
+        cols.forEach(function (c) {
+          const th = document.createElement('th');
+          th.className = 'px-3 py-2 font-medium whitespace-nowrap';
+          th.textContent = c;
+          trh.appendChild(th);
+        });
+        const thOp = document.createElement('th');
+        thOp.className = 'px-3 py-2 font-medium text-right whitespace-nowrap';
+        thOp.textContent = '操作';
+        trh.appendChild(thOp);
+        thead.appendChild(trh);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        tbody.className = 'text-[#0F172A]';
+        const tr = document.createElement('tr');
+        tr.className = 'border-t border-[#E5E7EB]';
+        values.forEach(function (v) {
+          tr.appendChild(fileCell(v, 'px-3 py-2.5 whitespace-nowrap'));
+        });
+        const tdOp = document.createElement('td');
+        tdOp.className = 'px-3 py-2.5 text-right whitespace-nowrap';
+        tdOp.appendChild(fileEditButton());
+        tr.appendChild(tdOp);
+        tbody.appendChild(tr);
+        table.appendChild(tbody);
+
+        box.appendChild(table);
+        wrap.appendChild(box);
+        return wrap;
+      }
+
+      // 价卡计费表：字段作为列头，每条费用一行；末尾为「操作」列；支持分页
+      function buildFileFeeTable(rows) {
+        const wrap = document.createElement('div');
+        const cap = document.createElement('div');
+        cap.className = 'text-xs font-medium text-[#475569]';
+        cap.textContent = '价卡计费';
+        wrap.appendChild(cap);
+
+        const pages = Math.max(1, Math.ceil(rows.length / FILE_PAGE_SIZE));
+        const page = Math.min(fileFeePage, pages);
+        const start = (page - 1) * FILE_PAGE_SIZE;
+        const pageRows = rows.slice(start, start + FILE_PAGE_SIZE);
+
+        const box = document.createElement('div');
+        box.className = 'mt-2 overflow-x-auto rounded-lg border border-[#E5E7EB]';
+        const table = document.createElement('table');
+        table.className = 'w-full border-collapse text-left text-xs';
+
+        const thead = document.createElement('thead');
+        thead.className = 'bg-[#F5F6F8] text-[#475569]';
+        const trh = document.createElement('tr');
+        FILE_FEE_COLS.forEach(function (c) {
+          const th = document.createElement('th');
+          th.className = 'px-3 py-2 font-medium whitespace-nowrap';
+          th.textContent = c;
+          trh.appendChild(th);
+        });
+        const thOp = document.createElement('th');
+        thOp.className = 'px-3 py-2 font-medium text-right whitespace-nowrap';
+        thOp.textContent = '操作';
+        trh.appendChild(thOp);
+        thead.appendChild(trh);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        tbody.className = 'text-[#0F172A]';
+        pageRows.forEach(function (r) {
+          const tr = document.createElement('tr');
+          tr.className = 'border-t border-[#E5E7EB]';
+          r.forEach(function (v) {
+            tr.appendChild(fileCell(v, 'px-3 py-2.5 whitespace-nowrap'));
+          });
+          const tdOp = document.createElement('td');
+          tdOp.className = 'px-3 py-2.5 text-right whitespace-nowrap';
+          tdOp.appendChild(fileEditButton());
+          tr.appendChild(tdOp);
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+
+        box.appendChild(table);
+        wrap.appendChild(box);
+        wrap.appendChild(buildFilePager(rows.length, page, function (p) {
+          fileFeePage = p;
+          renderFilePending();
+        }));
+        return wrap;
+      }
+
+      // 列表：解析失败标红、选中行高亮、操作列按状态渲染
+      function renderFileList() {
+        const rows = fileUnits.map(function (u, i) {
+          const tr = document.createElement('tr');
+          tr.className = 'border-t border-[#E5E7EB] cursor-pointer' +
+            (i === fileSelected ? ' bg-[#EFF4FF]' : '');
+          tr.addEventListener('click', function () {
+            fileSelected = i;
+            filePendingTip = '';
+            filePendingPage = 1;
+            fileFeePage = 1;
+            renderFilePending();
+          });
+
+          tr.appendChild(fileCell(u.name, 'px-3 py-2.5 font-medium'));
+          tr.appendChild(fileCell(u.parse, 'px-3 py-2.5 ' +
+            (u.parse === '解析失败' ? 'text-[#DC2626]' : 'text-[#16A34A]')));
+          tr.appendChild(fileCell(u.match, 'px-3 py-2.5'));
+          // 待确认条数：>0 橙色，0 正常，解析失败留空（—）
+          const pendingCount = (u.pending || []).length;
+          tr.appendChild(fileCell(u.parse === '解析失败' ? '—' : pendingCount + ' 条',
+            'px-3 py-2.5 ' + (u.parse !== '解析失败' && pendingCount > 0 ? 'font-medium text-[#EA580C]' : '')));
+          tr.appendChild(fileCell(u.handle, 'px-3 py-2.5'));
+
+          const tdOp = document.createElement('td');
+          tdOp.className = 'px-3 py-2.5 text-right whitespace-nowrap';
+          if (u.action === 'confirm') {
+            const ok = document.createElement('button');
+            ok.className = 'mr-3 text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer';
+            ok.textContent = '确认';
+            ok.addEventListener('click', function (e) {
+              if (e && e.stopPropagation) e.stopPropagation();
+              fileConfirmUnit(i);
+            });
+            const no = document.createElement('button');
+            no.className = 'text-[#475569] hover:text-[#0F172A] cursor-pointer';
+            no.textContent = '取消';
+            no.addEventListener('click', function (e) {
+              if (e && e.stopPropagation) e.stopPropagation();
+              fileCancelUnit(i);
+            });
+            tdOp.appendChild(ok);
+            tdOp.appendChild(no);
+          } else if (u.action === 'reparse') {
+            const re = document.createElement('button');
+            re.className = 'mr-3 text-[#2563EB] hover:text-[#1D4ED8] cursor-pointer';
+            re.textContent = '重新解析';
+            re.addEventListener('click', function (e) {
+              if (e && e.stopPropagation) e.stopPropagation();
+              fileReparseUnit(i);
+            });
+            const no = document.createElement('button');
+            no.className = 'text-[#475569] hover:text-[#0F172A] cursor-pointer';
+            no.textContent = '取消';
+            no.addEventListener('click', function (e) {
+              if (e && e.stopPropagation) e.stopPropagation();
+              fileCancelUnit(i);
+            });
+            tdOp.appendChild(re);
+            tdOp.appendChild(no);
+          } else if (u.action === 'parsing') {
+            const ing = document.createElement('span');
+            ing.className = 'mr-3 text-[#94A3B8]';
+            ing.textContent = '解析中...';
+            const no = document.createElement('button');
+            no.className = 'text-[#475569] hover:text-[#0F172A] cursor-pointer';
+            no.textContent = '取消';
+            no.addEventListener('click', function (e) {
+              if (e && e.stopPropagation) e.stopPropagation();
+              fileCancelUnit(i);
+            });
+            tdOp.appendChild(ing);
+            tdOp.appendChild(no);
+          }
+          tr.appendChild(tdOp);
+          return tr;
+        });
+        renderRowsInto(fileRows, rows);
+      }
+
+      // 选中行的详情
+      function renderFileDetail() {
+        const u = fileUnits[fileSelected];
+        const nodes = [];
+        if (!u || u.parse === '解析失败') {
+          const tip = document.createElement('div');
+          tip.className = 'rounded-lg border border-[#E5E7EB] bg-[#F8FAFC] px-4 py-6 text-center text-xs text-[#94A3B8]';
+          tip.textContent = '该服务单元解析失败，请重新解析后查看解析详情。';
+          nodes.push(tip);
+        } else {
+          const d = u.detail;
+          nodes.push(buildFileHTable('服务单元', FILE_UNIT_COLS, d.unit));
+          nodes.push(buildFileHTable('成本价卡', FILE_CARD_COLS, d.card));
+          nodes.push(buildFilePendingTable()); // 待确认计费（位于价卡计费上方）
+          nodes.push(buildFileFeeTable(d.fees));
+        }
+        renderRowsInto(fileDetail, nodes);
+      }
+
+      function renderFilePending() {
+        renderFileList();
+        renderFileDetail();
+      }
+
+      // 全部处理完成 → 解除输入框禁用并提示可进入入库流程
+      function checkFileAllDone() {
+        const all = fileUnits.every(function (u) {
+          return u.handle === '已更新' || u.handle === '已新增' || u.handle === '已取消';
+        });
+        if (!all || fileAllDone) return;
+        fileAllDone = true;
+        chatInput.disabled = false;
+        appendAiMessage(FILE_ALL_DONE_TEXT);
+        scrollMessagesToBottom();
+      }
+
+      function fileConfirmUnit(i) {
+        const u = fileUnits[i];
+        if (!u || u.action !== 'confirm') return;
+        const isNew = u.match === '匹配失败'; // 匹配失败 → 走新增，否则走更新
+        u.handle = isNew ? '已新增' : '已更新';
+        u.action = 'done';
+        fileSelected = i;
+        renderFilePending();
+        appendUserMessage('确认【' + u.name + '】走' + (isNew ? '新增' : '更新'));
+        appendAiMessage('【' + u.name + '】已' + (isNew ? '新增' : '更新') + '。');
+        scrollMessagesToBottom();
+        checkFileAllDone();
+      }
+
+      function fileCancelUnit(i) {
+        const u = fileUnits[i];
+        if (!u || u.action === 'done') return;
+        u.handle = '已取消';
+        u.action = 'done';
+        fileSelected = i;
+        renderFilePending();
+        checkFileAllDone();
+      }
+
+      function fileReparseUnit(i) {
+        const u = fileUnits[i];
+        if (!u || u.action !== 'reparse') return;
+        u.action = 'parsing';
+        u.handle = '解析中';
+        fileSelected = i;
+        renderFilePending();
+        appendUserMessage('重新解析【' + u.name + '】');
+        scrollMessagesToBottom();
+        setTimeout(function () {
+          u.parse = '解析成功';
+          u.match = '匹配成功';
+          u.handle = '待更新';
+          u.action = 'confirm';
+          // 重新解析出数据后，同样会带入待确认的计费规则
+          u.pending = [{
+            values: ['报关费', '全部国家', 'LAX、ORD', '—', 'USD', '否', '[首重] 0-5个 65', '', '', ''],
+            problems: [FILE_PROBLEM_STEP]
+          }];
+          renderFilePending();
+          appendAiMessage('【' + u.name + '】解析成功，请查看右侧数据面板。');
+          scrollMessagesToBottom();
+          checkFileAllDone();
+        }, FILE_PARSE_MS);
+      }
+
+      // 场景：文件解析建档
+      function runFileFlow() {
+        forceResetForDemo();
+        resetFileUnits();
+        panelMode = 'file';
+        resetConversation();
+        playStory([
+          { type: 'user', text: FILE_UPLOAD_TEXT },
+          { type: 'ai', text: FILE_PARSING_TEXT, disableInput: true },
+          { type: 'ai', text: FILE_PARSED_TEXT, panel: 'pending' }
+        ]);
+      }
+
+      // 场景：修改价卡计费主流程
+      function runBillingFlow() {
+        forceResetForDemo();
+        resetBilling();
+        panelMode = 'billing';
+        resetConversation();
+        playStory([
+          { type: 'user', text: BILLING.userText },
+          { type: 'ai', text: BILLING.aiText, panel: 'pending' }
+        ]);
+      }
+
+      // 场景：无法确定目标价卡 —— 追问要修改哪个价卡，数据面板保持空状态、输入框保持可用
+      function runBillingNoCardFlow() {
+        forceResetForDemo();
+        resetBilling();
+        panelMode = 'billing';
+        resetConversation();
+        showPreviewEmpty(); // 空状态：不展示表格与对比数据
+        setPanelState('empty');
+        playStory([
+          { type: 'user', text: BILLING.noCardUserText },
+          { type: 'ai', text: BILLING.noCardAiText }
+        ]);
+      }
+
+      // 场景：匹配不到对应的计费规则 —— 提示补充或更正信息，数据面板保持空状态、输入框保持可用
+      function runBillingNoRuleFlow() {
+        forceResetForDemo();
+        resetBilling();
+        panelMode = 'billing';
+        resetConversation();
+        showPreviewEmpty(); // 空状态：不展示表格与对比数据
+        setPanelState('empty');
+        playStory([
+          { type: 'user', text: BILLING.noRuleUserText },
+          { type: 'ai', text: BILLING.noRuleAiText }
+        ]);
+      }
+
+      // 场景：修改内容不完整 —— 追问要改什么、改成什么，数据面板保持空状态、输入框保持可用
+      function runBillingIncompleteFlow() {
+        forceResetForDemo();
+        resetBilling();
+        panelMode = 'billing';
+        resetConversation();
+        showPreviewEmpty(); // 空状态：不展示表格与对比数据
+        setPanelState('empty');
+        playStory([
+          { type: 'user', text: BILLING.incompleteUserText },
+          { type: 'ai', text: BILLING.incompleteAiText }
+        ]);
+      }
+
+      // 弹框编辑：一次编辑本行全部字段（当前仅一个「编辑」按钮）
+      function openEditField(fieldId) {
+        const targets = fieldId === '全部' ? fields : fields.filter(function (f) { return f.id === fieldId; });
+        targets.forEach(function (f) {
+          const next = window.prompt(f.id, f.value);
+          if (next !== null && next.trim() !== '') setFieldValue(f.id, next.trim());
+        });
+      }
+
+      editButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () { openEditField(btn.getAttribute('data-field-edit')); });
+      });
+
+      multiUnitBtn.addEventListener('click', runMultiUnitFlow);
+      multiPriceCardBtn.addEventListener('click', runPriceCardMultiFlow);
+      partialFailBtn.addEventListener('click', runPartialFailFlow);
+      priceCardPartialFailBtn.addEventListener('click', runPriceCardPartialFailFlow);
+      partialRetryBtn.addEventListener('click', retryPartial);
+      partialCancelBtn.addEventListener('click', cancelPartial);
+
+      // 多对象列表：勾选框与 [编辑] 在渲染时逐个绑定（见 renderMultiList）
+      // 第一列「全选」复选框：勾选后所有对象被选中，对比数据同步更新
+      if (selectAllUnits) {
+        selectAllUnits.addEventListener('change', function () {
+          units.forEach(function (u) { u.selected = selectAllUnits.checked; });
+          renderMultiPending();
+        });
+      }
+      multiConfirmBtn.addEventListener('click', confirmMultiUnits);
+      multiCancelBtn.addEventListener('click', cancelMultiUnits);
+
+      // 「正常流程」快捷按钮：按其所在会话的场景执行（价卡 / 价卡计费 / 服务单元）
+      normalFlowBtn.addEventListener('click', function () {
+        const activeTask = tasks.filter(function (t) { return t.active; })[0];
+        const scenario = activeTask ? activeTask.scenario : 'service';
+        if (scenario === 'pricecard') runPriceCardFlow();
+        else if (scenario === 'billing') runBillingFlow();
+        else runNormalFlow();
+      });
+      // 修改价卡计费：底部按钮 / 顶部全选 / 组级勾选 / 编辑弹框
+      if (billingConfirmBtn) billingConfirmBtn.addEventListener('click', confirmBilling);
+      if (billingCancelBtn) billingCancelBtn.addEventListener('click', cancelBilling);
+      // 多价卡多计费：底部按钮（每组第一列的组级勾选框即可全选该组）
+      if (mbConfirmBtn) mbConfirmBtn.addEventListener('click', confirmMultiBilling);
+      if (mbCancelBtn) mbCancelBtn.addEventListener('click', cancelMultiBilling);
+      if (mbMultiBillingBtn) mbMultiBillingBtn.addEventListener('click', runMultiBillingFlow);
+      if (mbPartialFailBtn) mbPartialFailBtn.addEventListener('click', runMultiBillingPartialFlow);
+      if (mbPartialRetryBtn) mbPartialRetryBtn.addEventListener('click', retryMultiBillingPartial);
+      if (mbPartialCancelBtn) mbPartialCancelBtn.addEventListener('click', cancelMultiBillingPartial);
+      if (fileFlowBtn) fileFlowBtn.addEventListener('click', runFileFlow);
+      if (billingGroupCheck) {
+        billingGroupCheck.addEventListener('change', function () {
+          billingRule.selected = billingGroupCheck.checked;
+          renderBillingPending();
+        });
+      }
+      if (billingEditSaveBtn) billingEditSaveBtn.addEventListener('click', saveMbBillingEdit);
+      if (billingEditCancelBtn) billingEditCancelBtn.addEventListener('click', closeMbBillingEdit);
+      if (billingRulesSaveBtn) billingRulesSaveBtn.addEventListener('click', saveBillingEdit);
+      if (billingRulesCancelBtn) billingRulesCancelBtn.addEventListener('click', closeBillingEdit);
+      if (billingNoCardBtn) billingNoCardBtn.addEventListener('click', runBillingNoCardFlow);
+      if (billingNoRuleBtn) billingNoRuleBtn.addEventListener('click', runBillingNoRuleFlow);
+      if (billingIncompleteBtn) billingIncompleteBtn.addEventListener('click', runBillingIncompleteFlow);
+      panelConfirmBtn.addEventListener('click', confirmModify);
+      panelCancelBtn.addEventListener('click', cancelModify);
+      unitNotFoundBtn.addEventListener('click', runUnitNotFoundFlow);
+      priceCardNotFoundBtn.addEventListener('click', runPriceCardNotFoundFlow);
+      priceCardIncompleteBtn.addEventListener('click', runPriceCardIncompleteFlow);
+      incompleteBtn.addEventListener('click', runIncompleteFlow);
+
+      // 首次进入：按数据源同步表格与对比数据
+      syncFieldCells();
+      renderPending();
+
+      /* ============ 新建任务 + 初始对话 ============ */
+      // 所有新对话（含初始状态）统一的 AI 打招呼语
+      const AI_GREETING = '你好，我是运小星智能服务助手，有什么可以帮您的？';
+
+      let taskSeq = 0;
+
+      // 新建会话：按服务单元场景开场，并显示该场景的快捷按钮
+      function startNewTask(taskName) {
+        const task = { title: taskName, scenario: 'service' };
+        chatTitle.textContent = taskName;
+        taskTitleHint.classList.remove('is-collapsed');
+        openConversation(task);
+        chatInput.focus();
+      }
+
+      function addTask(title) {
+        tasks.forEach(function (task) { task.active = false; });
+        const existing = tasks.filter(function (t) { return t.title === title; })[0];
+        if (existing) existing.active = true;
+        else tasks.push({ title: title, active: true, hint: '刚刚', scenario: 'service', actions: ['normalFlowBtn'] });
+        taskSearch.value = '';
+        renderTaskList();
+      }
+
+      // 打开某条会话：按其场景加载开场对话、重置数据面板并显示该会话的快捷按钮
+      function openConversation(task) {
+        if (!task) return;
+        singleMode = task.scenario === 'pricecard' ? 'pricecard' : 'service';
+        panelMode = 'single';
+        partialArm = false;
+        chatInput.disabled = false;
+
+        // 开场状态：只展示 AI 打招呼语，数据面板空状态，等待用户输入或点击快捷按钮
+        messages.textContent = '';
+        chatInput.value = '';
+        appendAiMessage(AI_GREETING);
+        scrollMessagesToBottom();
+
+        showActionsFor(task.scenario);
+        previewPanel.style.width = '360px';
+        showPanel();
+        resetSinglePanel();
+        showPreviewEmpty();
+        setPanelState('empty');
+      }
+
+      function selectTask(title) {
+        const target = tasks.filter(function (task) { return task.title === title; })[0];
+        if (!target) return;
+        tasks.forEach(function (task) { task.active = task.title === title; });
+        chatTitle.textContent = title;
+        if (target.hint) taskTitleHint.classList.remove('is-collapsed');
+        else taskTitleHint.classList.add('is-collapsed');
+        renderTaskList();
+        openConversation(target); // 切换会话：加载该会话的开场与专属快捷按钮
+      }
+
+      newTaskBtn.addEventListener('click', function () {
+        // 搜索框里有内容时，直接用它作为新任务名；否则按序号自动命名
+        const typed = taskSearch.value.trim();
+        let taskName = typed;
+        if (!taskName) {
+          taskSeq++;
+          taskName = '新任务 ' + taskSeq;
+        }
+        addTask(taskName);
+        startNewTask(taskName);
+      });
+
+      // 首次进入：渲染会话列表，并打开默认会话（修改价卡信息）
+      renderTaskList();
+      showPreviewEmpty();
+      const defaultTask = tasks.filter(function (t) { return t.active; })[0] || tasks[0];
+      chatTitle.textContent = defaultTask.title; // 标题与选中的会话一致
+      openConversation(defaultTask);
+    })();
+  </script>
+</body>
+</html>
